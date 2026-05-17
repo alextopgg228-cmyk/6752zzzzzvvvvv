@@ -335,6 +335,13 @@ function qualityBadge(q) {
     return `<span class="quality-badge ${cls}" title="${esc(q)}">${short}</span>`;
 }
 
+function skinPreview(url, name) {
+    if (!url) return '<span class="skin-preview skin-preview-empty">CS2</span>';
+    return `<span class="skin-preview">
+        <img src="${esc(url)}" alt="${esc(name || 'CS2 skin')}" loading="lazy" onerror="this.style.display='none'">
+    </span>`;
+}
+
 // ─── Ошибка ───────────────────────────────────────────────────────────────────
 function errHtml(e) {
     return `<div class="loading" style="flex-direction:column; gap:8px; color:var(--accent3);">

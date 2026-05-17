@@ -154,7 +154,7 @@ function renderListings(items) {
                     </thead>
                     <tbody>${items.map(l => `
                         <tr>
-                            <td class="fw-600">${escapeHtml(l.SkinName)}</td>
+                            <td class="fw-600 skin-name-cell">${skinPreview(l.ImageURL, l.SkinName)}<span>${escapeHtml(l.SkinName)}</span></td>
                             <td class="text-sec">${escapeHtml(l.WeaponName || '')}</td>
                             <td>${getQualityBadge(l.Quality)}</td>
                             <td class="td-mono text-sec">${l.FloatValue != null ? parseFloat(l.FloatValue).toFixed(4) : '—'}</td>

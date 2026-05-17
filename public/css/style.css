@@ -958,12 +958,49 @@ canvas { max-width: 100%; }
 }
 
 .skin-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: calc(100% - 24px);
+    height: calc(100% - 20px);
+    object-fit: contain;
+    filter: drop-shadow(0 12px 18px rgba(0,0,0,0.45));
     transition: transform 0.3s ease;
 }
 
 .skin-card:hover .skin-image {
     transform: scale(1.05);
+}
+
+.skin-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 190px;
+}
+
+.skin-preview {
+    width: 56px;
+    height: 36px;
+    flex: 0 0 56px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: radial-gradient(circle at center, rgba(74,159,232,0.13), rgba(0,0,0,0.1));
+    overflow: hidden;
+}
+
+.skin-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 2px;
+    filter: drop-shadow(0 5px 8px rgba(0,0,0,0.4));
+}
+
+.skin-preview-empty {
+    color: var(--text-muted);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1px;
 }

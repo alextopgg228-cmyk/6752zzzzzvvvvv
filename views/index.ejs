@@ -94,7 +94,7 @@ async function loadHome() {
                 </tr></thead>
                 <tbody>${listings.map(l => `
                     <tr>
-                        <td class="fw-600">${esc(l.SkinName)}</td>
+                        <td class="fw-600 skin-name-cell">${skinPreview(l.ImageURL, l.SkinName)}<span>${esc(l.SkinName)}</span></td>
                         <td class="text-sec">${esc(l.WeaponName||'')}</td>
                         <td>${qualityBadge(l.Quality)}</td>
                         <td class="td-price">${fmtMoney(l.Price)} ₽</td>
