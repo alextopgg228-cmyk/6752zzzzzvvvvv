@@ -9,7 +9,7 @@
   "currentUser": {
     "UserID": 1,
     "Username": "SkinMaster",
-    "Balance": 50000
+    "Balance": 500000
   },
   "topListings": [
     { "ListingID": 1, "SkinName": "Dragon Lore", "WeaponName": "AWP", "Quality": "Factory New", "Price": 420000, "SellerName": "NeoTrader", "ImageURL": "https://steamcommunity-a.akamaihd.net/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpot621FAR17P7NdTRH-t26q4SZlvD7PYTQgXtu5Mx2gv2P9o6migzl_Us5ZmCmLYDDJgU9NA6B81S5yezvg8e-7cycnXJgvHZx5WGdwUJqz1Tl4g/360fx360f" },
@@ -23,7 +23,7 @@
     { "UserID": 2, "Username": "KatowiceKing", "TotalTrades": 76, "Balance": 318250, "ActiveListings": 4 },
     { "UserID": 5, "Username": "DustDealer", "TotalTrades": 69, "Balance": 250900, "ActiveListings": 5 },
     { "UserID": 3, "Username": "MiragePro", "TotalTrades": 61, "Balance": 180400, "ActiveListings": 3 },
-    { "UserID": 1, "Username": "SkinMaster", "TotalTrades": 54, "Balance": 50000, "ActiveListings": 2 }
+    { "UserID": 1, "Username": "SkinMaster", "TotalTrades": 54, "Balance": 500000, "ActiveListings": 2 }
   ],
   "popularSkins": [
     { "SkinName": "Asiimov", "WeaponName": "AWP", "Quality": "Field-Tested", "TimesSold": 44, "AvgSoldPrice": 7200 },
@@ -69,7 +69,7 @@
     { "UserID": 3, "Username": "MiragePro", "Balance": 180400, "TotalTrades": 61, "DifferenceFromAvg": 14720 }
   ],
   "usersDetail": [
-    { "UserID": 1, "Username": "SkinMaster", "Balance": 50000, "TotalTrades": 54, "InventoryValue": 88000, "ActiveListings": 2, "AvgSalePrice": 7600 },
+    { "UserID": 1, "Username": "SkinMaster", "Balance": 500000, "TotalTrades": 54, "InventoryValue": 88000, "ActiveListings": 2, "AvgSalePrice": 7600 },
     { "UserID": 2, "Username": "KatowiceKing", "Balance": 318250, "TotalTrades": 76, "InventoryValue": 520000, "ActiveListings": 4, "AvgSalePrice": 15400 },
     { "UserID": 3, "Username": "MiragePro", "Balance": 180400, "TotalTrades": 61, "InventoryValue": 270300, "ActiveListings": 3, "AvgSalePrice": 12100 },
     { "UserID": 4, "Username": "PixelBroker", "Balance": 132900, "TotalTrades": 48, "InventoryValue": 210000, "ActiveListings": 5, "AvgSalePrice": 9800 },

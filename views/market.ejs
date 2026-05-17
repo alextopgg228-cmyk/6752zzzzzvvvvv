@@ -162,7 +162,7 @@ function renderListings(items) {
                             <td class="td-price">${formatMoney(l.Price)} ₽</td>
                             <td class="${getPriceClass(l.PriceRating)}">${escapeHtml(l.PriceRating || '')}</td>
                             <td class="text-sec text-sm">${escapeHtml(l.SellerName)}</td>
-                            '<td><button class="btn btn-sm btn-primary" onclick="buySkin(' + l.ListingID + ', 1, ' + l.Price + ', \'' + escapeHtml(l.SkinName) + '\')">Купить</button></td>'
+                            <td><button class="btn btn-sm btn-primary" onclick="buySkin(${l.ListingID}, 1, ${l.Price}, '${escapeHtml(l.SkinName)}')">Купить</button></td>
                         </tr>
                     `).join('')}
                     </tbody>
@@ -249,10 +249,7 @@ async function buySkin(listingId, buyerId, price, skinName) {
     }
     const session = getCurrentRoleSession();
     const targetBuyerId = session.userId || buyerId;
-    if (!confirm(`Подтвердите покупку "${skinName}" за ${formatMoney(price)} ₽?`)) {
-        return;
-    }
-    
+
     try {
         const response = await fetch(`/api/buy/${listingId}`, {
             method: 'POST',
@@ -263,15 +260,15 @@ async function buySkin(listingId, buyerId, price, skinName) {
         const result = await response.json();
         
         if (result.success) {
-            alert(`✅ ${result.message}\nСписано: ${formatMoney(result.price)} ₽\nКомиссия: ${formatMoney(result.commission)} ₽`);
-            loadUserBalance(); // Обновляем баланс
-            loadMarket(); // Обновляем маркет
+            showToast(`Покупка выполнена. Баланс: ${formatMoney(result.newBalance)} ₽`);
+            loadUserBalance();
+            loadMarket();
         } else {
-            alert(`❌ Ошибка: ${result.error}`);
+            showToast(`Ошибка: ${result.error}`, true);
         }
     } catch(err) {
         console.error('Ошибка покупки:', err);
-        alert(`❌ Ошибка: ${err.message}`);
+        showToast(`Ошибка: ${err.message}`, true);
     }
 }
 </script>

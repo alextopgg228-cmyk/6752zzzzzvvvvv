@@ -9,7 +9,7 @@
     <div id="admin-locked" class="access-lock" style="display:none;">
         <div>
             <div class="lock-title">Требуется служебная роль</div>
-            <p class="text-sec">Войдите как модератор, администратор или технический администратор, чтобы открыть панель.</p>
+            <p class="text-sec">Войдите как модератор или администратор, чтобы открыть панель.</p>
         </div>
         <button class="btn btn-primary" onclick="openLoginModal()">Войти по роли</button>
     </div>
@@ -83,11 +83,6 @@
         </div>
 
         <div class="grid-2 mb-3">
-            <div class="card admin-section" data-permission="system">
-                <div class="card-title">Технический контур</div>
-                <div class="ops-list" id="tech-ops"></div>
-            </div>
-
             <div class="card admin-section" data-permission="audit">
                 <div class="card-title">Журнал событий</div>
                 <div class="timeline" id="audit-log"></div>
@@ -113,11 +108,6 @@ const ACTIONS_BY_PERMISSION = {
         'Проверить категории с просадкой',
         'Открыть график конверсии'
     ],
-    system: [
-        'Проверить деплой GitHub Pages',
-        'Проверить подключение SQL Server',
-        'Очистить кеш demo API'
-    ],
     audit: [
         'Открыть аудит входов',
         'Сверить изменения ролей',
@@ -131,15 +121,13 @@ const PERMISSION_TITLES = {
     analytics: 'Аналитика',
     moderate: 'Модерация',
     manageUsers: 'Пользователи',
-    system: 'Технический доступ',
     audit: 'Аудит',
-    full: 'Полный доступ'
 };
 
 function renderAdminDashboard() {
     const session = getCurrentRoleSession();
     const role = getRoleConfig(session.role);
-    const canOpen = roleCan('moderate') || roleCan('manageUsers') || roleCan('system') || roleCan('full');
+    const canOpen = roleCan('moderate') || roleCan('manageUsers');
 
     document.getElementById('admin-locked').style.display = canOpen ? 'none' : 'flex';
     document.getElementById('admin-dashboard').style.display = canOpen ? 'block' : 'none';
@@ -159,7 +147,7 @@ function renderAdminDashboard() {
                     <tr>
                         <td class="fw-600">${esc(user.Username)}</td>
                         <td class="td-price">${fmtMoney(user.Balance)} ₽</td>
-                        <td><span class="role-chip">${['Покупатель','Продавец','Аналитик','Модератор','Администратор','Тех. администратор'][index % 6]}</span></td>
+                        <td><span class="role-chip">${['Покупатель','Продавец','Модератор','Администратор'][index % 4]}</span></td>
                     </tr>
                 `).join('')}</tbody>
             </table>
@@ -192,18 +180,6 @@ function renderAdminDashboard() {
         </tr>
     `).join('');
 
-    document.getElementById('tech-ops').innerHTML = [
-        ['GitHub Pages', 'Сборка dist из ветки main'],
-        ['Demo API', 'public/data/api.json'],
-        ['Backend режим', 'Express + SQL Server локально'],
-        ['Secrets', '.env не публикуется']
-    ].map(item => `
-        <div class="ops-item">
-            <strong>${item[0]}</strong>
-            <span>${item[1]}</span>
-        </div>
-    `).join('');
-
     document.getElementById('audit-log').innerHTML = [
         'Вход выполнен: ' + role.title,
         'Проверены права панели управления',
@@ -213,7 +189,7 @@ function renderAdminDashboard() {
 
     document.querySelectorAll('.admin-section').forEach(section => {
         const permission = section.dataset.permission;
-        section.style.display = roleCan(permission) || roleCan('full') ? 'block' : 'none';
+        section.style.display = roleCan(permission) ? 'block' : 'none';
     });
 }
 

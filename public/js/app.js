@@ -2,6 +2,7 @@
 
 const CS2_ORIGINAL_FETCH = window.fetch.bind(window);
 let CS2_STATIC_API_CACHE = null;
+const CS2_MARKET_STATE_KEY = 'cs2-market-demo-state-v2';
 
 function cs2StaticApiUrl() {
     const base = window.CS2_ASSET_BASE || '.';
@@ -65,38 +66,173 @@ function cs2FilterListings(listings, searchParams) {
     return items.sort(sorters[sort] || sorters.price_desc);
 }
 
+function cs2ReadMarketState() {
+    try {
+        return JSON.parse(localStorage.getItem(CS2_MARKET_STATE_KEY) || '{}');
+    } catch (error) {
+        return {};
+    }
+}
+
+function cs2WriteMarketState(state) {
+    localStorage.setItem(CS2_MARKET_STATE_KEY, JSON.stringify(state));
+}
+
+function cs2StateDefaults() {
+    return {
+        purchasedListingIds: [],
+        balances: {},
+        purchaseHistory: {},
+        tradeSeed: 2000
+    };
+}
+
+function cs2GetMarketState() {
+    return { ...cs2StateDefaults(), ...cs2ReadMarketState() };
+}
+
+function cs2UserBalance(data, userId, state = cs2GetMarketState()) {
+    if (state.balances && state.balances[String(userId)] != null) {
+        return Number(state.balances[String(userId)]);
+    }
+    const user = data.usersDetail.find(item => String(item.UserID) === String(userId));
+    return Number(user ? user.Balance : 0);
+}
+
+function cs2UsersWithState(data, state = cs2GetMarketState()) {
+    return data.usersDetail.map(user => ({
+        ...user,
+        Balance: cs2UserBalance(data, user.UserID, state)
+    }));
+}
+
+function cs2ActiveListings(data, state = cs2GetMarketState()) {
+    const purchased = new Set((state.purchasedListingIds || []).map(String));
+    return data.listings.filter(item => !purchased.has(String(item.ListingID)));
+}
+
+function cs2TopListings(activeListings) {
+    return activeListings
+        .slice()
+        .sort((a, b) => Number(b.Price) - Number(a.Price))
+        .slice(0, 5)
+        .map(({ ListingID, SkinName, WeaponName, Quality, Price, SellerName, ImageURL }) => ({
+            ListingID, SkinName, WeaponName, Quality, Price, SellerName, ImageURL
+        }));
+}
+
+function cs2HistoryForUser(data, userId, state = cs2GetMarketState()) {
+    const base = data.purchaseHistory[String(userId)] || [];
+    const extra = state.purchaseHistory[String(userId)] || [];
+    return extra.concat(base).sort((a, b) => new Date(b.TradeDate) - new Date(a.TradeDate));
+}
+
+function cs2StatsWithState(data, state = cs2GetMarketState()) {
+    const purchasedIds = new Set((state.purchasedListingIds || []).map(String));
+    const purchasedListings = data.listings.filter(item => purchasedIds.has(String(item.ListingID)));
+    const purchasedVolume = purchasedListings.reduce((sum, item) => sum + Number(item.Price || 0), 0);
+    return {
+        ...data.stats,
+        ActiveListings: cs2ActiveListings(data, state).length,
+        CompletedTrades: Number(data.stats.CompletedTrades || 0) + purchasedListings.length,
+        TotalVolume: Number(data.stats.TotalVolume || 0) + purchasedVolume
+    };
+}
+
+function cs2BuyListing(data, listingId, init) {
+    const state = cs2GetMarketState();
+    const purchased = new Set((state.purchasedListingIds || []).map(String));
+    const listing = data.listings.find(item => String(item.ListingID) === String(listingId));
+    if (!listing || purchased.has(String(listingId))) {
+        return { status: 409, payload: { success: false, error: 'Объявление уже куплено или недоступно' } };
+    }
+
+    let body = {};
+    try {
+        body = init && init.body ? JSON.parse(init.body) : {};
+    } catch (error) {
+        body = {};
+    }
+    const session = typeof getCurrentRoleSession === 'function' ? getCurrentRoleSession() : {};
+    const buyerId = Number(body.buyerId || session.userId || 1);
+    const currentBalance = cs2UserBalance(data, buyerId, state);
+    const price = Number(listing.Price || 0);
+    if (currentBalance < price) {
+        return {
+            status: 400,
+            payload: {
+                success: false,
+                error: `Недостаточно средств. Нужно ${fmtMoney(price)} ₽, доступно ${fmtMoney(currentBalance)} ₽`
+            }
+        };
+    }
+
+    const commission = Number((price * 0.05).toFixed(2));
+    const sellerReceived = Number((price - commission).toFixed(2));
+    state.purchasedListingIds = Array.from(purchased).concat(String(listingId));
+    state.balances = state.balances || {};
+    state.balances[String(buyerId)] = Number((currentBalance - price).toFixed(2));
+
+    const seller = data.usersDetail.find(user => user.Username === listing.SellerName);
+    if (seller) {
+        state.balances[String(seller.UserID)] = Number((cs2UserBalance(data, seller.UserID, state) + sellerReceived).toFixed(2));
+    }
+
+    state.tradeSeed = Number(state.tradeSeed || 2000) + 1;
+    state.purchaseHistory = state.purchaseHistory || {};
+    state.purchaseHistory[String(buyerId)] = state.purchaseHistory[String(buyerId)] || [];
+    state.purchaseHistory[String(buyerId)].unshift({
+        TradeID: state.tradeSeed,
+        TradeDate: new Date().toISOString(),
+        Price: price,
+        SkinName: listing.SkinName,
+        WeaponName: listing.WeaponName,
+        Quality: listing.Quality,
+        SellerName: listing.SellerName
+    });
+    cs2WriteMarketState(state);
+
+    return {
+        status: 200,
+        payload: {
+            success: true,
+            message: `Покупка выполнена: ${listing.WeaponName} | ${listing.SkinName}`,
+            price,
+            commission,
+            sellerReceived,
+            newBalance: state.balances[String(buyerId)]
+        }
+    };
+}
+
 function cs2StaticPayload(data, endpoint, searchParams, init) {
-    if (endpoint === '/stats') return data.stats;
-    if (endpoint === '/top-listings') return data.topListings;
+    const state = cs2GetMarketState();
+    const activeListings = cs2ActiveListings(data, state);
+    if (endpoint === '/stats') return cs2StatsWithState(data, state);
+    if (endpoint === '/top-listings') return cs2TopListings(activeListings);
     if (endpoint === '/top-users') return data.topUsers;
     if (endpoint === '/categories') return data.categories;
     if (endpoint === '/quality-stats') return data.qualityStats;
     if (endpoint === '/sales-dynamics') return data.salesDynamics;
     if (endpoint === '/rich-users') return data.richUsers;
     if (endpoint === '/popular-skins') return data.popularSkins;
-    if (endpoint === '/users-detail') return data.usersDetail;
-    if (endpoint === '/listings') return cs2FilterListings(data.listings, searchParams);
+    if (endpoint === '/users-detail') return cs2UsersWithState(data, state);
+    if (endpoint === '/listings') return cs2FilterListings(activeListings, searchParams);
 
     const balanceMatch = endpoint.match(/^\/user\/(\d+)\/balance$/);
     if (balanceMatch) {
-        return data.usersDetail.find(user => String(user.UserID) === balanceMatch[1]) || data.currentUser;
+        const user = cs2UsersWithState(data, state).find(item => String(item.UserID) === balanceMatch[1]);
+        return user || data.currentUser;
     }
 
     const historyMatch = endpoint.match(/^\/user\/(\d+)\/purchase-history$/);
     if (historyMatch) {
-        return data.purchaseHistory[String(historyMatch[1])] || [];
+        return cs2HistoryForUser(data, historyMatch[1], state);
     }
 
     const buyMatch = endpoint.match(/^\/buy\/(\d+)$/);
     if (buyMatch && (!init || !init.method || String(init.method).toUpperCase() === 'POST')) {
-        const listing = data.listings.find(item => String(item.ListingID) === buyMatch[1]);
-        return {
-            success: true,
-            message: 'Демо-покупка выполнена. На GitHub Pages база данных не изменяется.',
-            price: listing ? listing.Price : 0,
-            commission: listing ? Number(listing.Price) * 0.05 : 0,
-            sellerReceived: listing ? Number(listing.Price) * 0.95 : 0
-        };
+        return cs2BuyListing(data, buyMatch[1], init);
     }
 
     return undefined;
@@ -116,6 +252,9 @@ window.fetch = async function cs2Fetch(input, init) {
         const payload = cs2StaticPayload(data, cs2ApiEndpoint(url), url.searchParams, init);
         if (payload === undefined) {
             return cs2JsonResponse({ error: 'Этот API недоступен в GitHub Pages demo mode' }, 404);
+        }
+        if (payload && payload.payload !== undefined && payload.status !== undefined) {
+            return cs2JsonResponse(payload.payload, payload.status);
         }
         return cs2JsonResponse(payload);
     } catch (error) {
@@ -140,7 +279,7 @@ const CS2_ROLES = {
         username: 'SkinMaster',
         description: 'Покупает скины, смотрит баланс и историю своих покупок.',
         userId: 1,
-        balance: 50000,
+        balance: 500000,
         permissions: ['browse', 'buy', 'history']
     },
     seller: {
@@ -151,15 +290,6 @@ const CS2_ROLES = {
         userId: 4,
         balance: 132900,
         permissions: ['browse', 'sell', 'history', 'analytics']
-    },
-    analyst: {
-        title: 'Аналитик',
-        badge: 'Analytics',
-        username: 'MarketAnalyst',
-        description: 'Смотрит графики, пользователей и финансовые показатели без прав модерации.',
-        userId: 8,
-        balance: 70800,
-        permissions: ['browse', 'analytics', 'audit']
     },
     moderator: {
         title: 'Модератор',
@@ -178,24 +308,6 @@ const CS2_ROLES = {
         userId: 2,
         balance: 318250,
         permissions: ['browse', 'buy', 'sell', 'history', 'analytics', 'moderate', 'manageUsers', 'audit']
-    },
-    tech_admin: {
-        title: 'Технический администратор',
-        badge: 'Tech Admin',
-        username: 'TechRoot',
-        description: 'Отвечает за деплой, доступность, demo API, SQL Server и системный аудит.',
-        userId: 7,
-        balance: 421500,
-        permissions: ['browse', 'analytics', 'system', 'audit', 'manageUsers']
-    },
-    owner: {
-        title: 'Главный администратор',
-        badge: 'Owner',
-        username: 'RootOwner',
-        description: 'Полный доступ ко всем demo-разделам и операциям.',
-        userId: 7,
-        balance: 421500,
-        permissions: ['full']
     }
 };
 
@@ -215,11 +327,11 @@ function getCurrentRoleSession() {
 
 function roleCan(permission) {
     const role = getCurrentRoleSession();
-    return role.permissions.includes('full') || role.permissions.includes(permission);
+    return role.permissions.includes(permission);
 }
 
 function roleCanOpenAdmin() {
-    return roleCan('moderate') || roleCan('manageUsers') || roleCan('system') || roleCan('full');
+    return roleCan('moderate') || roleCan('manageUsers');
 }
 
 function loginAsRole(roleId) {
