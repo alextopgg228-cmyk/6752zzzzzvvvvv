@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CS2 Skin Market — pr_Maksimenkov_skins</title>
-    <link rel="stylesheet" href="<%= typeof assetBase !== 'undefined' ? assetBase : '' %>/css/style.css">
+    <link rel="stylesheet" href="<%= typeof assetBase !== 'undefined' ? assetBase : '' %>/css/style.css<%= typeof assetVersion !== 'undefined' ? '?v=' + assetVersion : '' %>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         window.CS2_STATIC_MODE = <%= typeof staticMode !== 'undefined' && staticMode ? 'true' : 'false' %>;
         window.CS2_ASSET_BASE = '<%= typeof assetBase !== 'undefined' ? assetBase : '' %>';
     </script>
-    <script src="<%= typeof assetBase !== 'undefined' ? assetBase : '' %>/js/app.js"></script>
+    <script src="<%= typeof assetBase !== 'undefined' ? assetBase : '' %>/js/app.js<%= typeof assetVersion !== 'undefined' ? '?v=' + assetVersion : '' %>"></script>
     <style>
     .modal {
         display: none;

@@ -4,6 +4,7 @@ const ejs = require('ejs');
 
 const root = path.resolve(__dirname, '..');
 const dist = path.join(root, 'dist');
+const assetVersion = Date.now().toString();
 
 const pages = [
     { view: 'index', output: 'index.html', pageId: 'home', assetBase: '.' },
@@ -30,6 +31,7 @@ async function renderPage(page) {
         staticMode: true,
         pageId: page.pageId,
         assetBase: page.assetBase,
+        assetVersion,
         ...paths(page.assetBase),
     });
 
