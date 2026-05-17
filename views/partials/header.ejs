@@ -114,13 +114,18 @@
         <li><a href="<%= typeof marketPath !== 'undefined' ? marketPath : '/market' %>" id="nav-market">Маркет <span class="nav-badge">LIVE</span></a></li>
         <li><a href="<%= typeof analyticsPath !== 'undefined' ? analyticsPath : '/analytics' %>" id="nav-analytics">Аналитика</a></li>
         <li><a href="<%= typeof usersPath !== 'undefined' ? usersPath : '/users' %>" id="nav-users">Пользователи</a></li>
+        <li><a href="<%= typeof adminPath !== 'undefined' ? adminPath : '/admin' %>" id="nav-admin" data-role-nav="admin">Панель</a></li>
     </ul>
 </nav>
 
-<div class="user-panel">
-    <span>👤 Пользователь: <strong id="user-name">SkinMaster</strong></span>
-    <span>💰 Баланс: <span id="user-balance" class="user-balance">0 ₽</span></span>
-    <button class="history-btn" onclick="showPurchaseHistory(1)">📜 История покупок</button>
+<div class="user-panel" id="session-panel">
+    <span>Профиль: <strong id="user-name">Гость</strong></span>
+    <span class="role-badge" id="user-role-badge">Гость</span>
+    <span id="balance-line">Баланс: <span id="user-balance" class="user-balance">0 ₽</span></span>
+    <button class="history-btn" id="history-button" onclick="showPurchaseHistory()">История</button>
+    <a class="history-btn" id="admin-shortcut" href="<%= typeof adminPath !== 'undefined' ? adminPath : '/admin' %>">Панель</a>
+    <button class="history-btn" onclick="openLoginModal()">Вход</button>
+    <button class="history-btn" id="logout-button" onclick="logoutRole()">Выход</button>
 </div>
 
 <div id="history-modal" class="modal">
@@ -135,12 +140,36 @@
     </div>
 </div>
 
+<div id="login-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Вход по роли</h3>
+            <button class="modal-close" onclick="closeModal('login-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="role-login-head">
+                <div>
+                    <div class="section-title">Выберите профиль</div>
+                    <p class="text-sec">Это demo-вход для GitHub Pages. Роль сохраняется в браузере и показывает разные разделы интерфейса.</p>
+                </div>
+                <span class="role-chip">Demo RBAC</span>
+            </div>
+            <div class="role-grid" id="role-options"></div>
+        </div>
+    </div>
+</div>
+
 <div class="page-wrapper">
 
 <script>
     async function loadUserBalance() {
+        const session = getCurrentRoleSession();
+        if (!session.userId) {
+            applyRoleSession();
+            return;
+        }
         try {
-            const response = await fetch('/api/user/1/balance');
+            const response = await fetch(`/api/user/${session.userId}/balance`);
             const data = await response.json();
             const balanceEl = document.getElementById('user-balance');
             if (balanceEl && data.Balance !== undefined) {
@@ -149,18 +178,25 @@
         } catch(e) {
             console.error('Ошибка загрузки баланса:', e);
             const balanceEl = document.getElementById('user-balance');
-            if (balanceEl) balanceEl.textContent = '50,000 ₽';
+            if (balanceEl) balanceEl.textContent = fmtMoney(session.balance || 0) + ' ₽';
         }
     }
     
     async function showPurchaseHistory(userId) {
+        const session = getCurrentRoleSession();
+        const targetUserId = userId || session.userId;
+        if (!targetUserId || !roleCan('history')) {
+            openLoginModal();
+            showToast('Для истории покупок войдите как покупатель или администратор', true);
+            return;
+        }
         const modal = document.getElementById('history-modal');
         const content = document.getElementById('history-content');
         if (!modal) return;
         modal.style.display = 'flex';
         content.innerHTML = '<div class="loading"><div class="spinner"></div>Загрузка истории...</div>';
         try {
-            const response = await fetch(`/api/user/${userId}/purchase-history`);
+            const response = await fetch(`/api/user/${targetUserId}/purchase-history`);
             const history = await response.json();
             if (!history.length) {
                 content.innerHTML = '<div class="loading">📭 История покупок пуста</div>';
@@ -224,12 +260,13 @@
     }
     
     document.addEventListener('DOMContentLoaded', function() {
+        applyRoleSession();
         loadUserBalance();
     });
     
-    window.onclick = function(event) {
+    document.addEventListener('click', function(event) {
         if (event.target.classList && event.target.classList.contains('modal')) {
             event.target.style.display = 'none';
         }
-    };
+    });
 </script>

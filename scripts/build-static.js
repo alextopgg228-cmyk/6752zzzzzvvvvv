@@ -10,6 +10,7 @@ const pages = [
     { view: 'market', output: 'market/index.html', pageId: 'market', assetBase: '..' },
     { view: 'analytics', output: 'analytics/index.html', pageId: 'analytics', assetBase: '..' },
     { view: 'users', output: 'users/index.html', pageId: 'users', assetBase: '..' },
+    { view: 'admin', output: 'admin/index.html', pageId: 'admin', assetBase: '..' },
 ];
 
 function paths(assetBase) {
@@ -18,6 +19,7 @@ function paths(assetBase) {
         marketPath: `${assetBase}/market/`,
         analyticsPath: `${assetBase}/analytics/`,
         usersPath: `${assetBase}/users/`,
+        adminPath: `${assetBase}/admin/`,
     };
 }
 

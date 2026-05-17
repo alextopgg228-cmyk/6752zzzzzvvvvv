@@ -123,6 +123,171 @@ window.fetch = async function cs2Fetch(input, init) {
     }
 };
 
+const CS2_ROLE_STORAGE_KEY = 'cs2-role-session';
+const CS2_ROLES = {
+    guest: {
+        title: 'Гость',
+        badge: 'Guest',
+        username: 'Гость',
+        description: 'Может смотреть витрину и общую статистику без служебных действий.',
+        userId: null,
+        balance: 0,
+        permissions: ['browse']
+    },
+    buyer: {
+        title: 'Покупатель',
+        badge: 'Buyer',
+        username: 'SkinMaster',
+        description: 'Покупает скины, смотрит баланс и историю своих покупок.',
+        userId: 1,
+        balance: 50000,
+        permissions: ['browse', 'buy', 'history']
+    },
+    seller: {
+        title: 'Продавец',
+        badge: 'Seller',
+        username: 'PixelBroker',
+        description: 'Работает с объявлениями, ценами и своим инвентарем.',
+        userId: 4,
+        balance: 132900,
+        permissions: ['browse', 'sell', 'history', 'analytics']
+    },
+    analyst: {
+        title: 'Аналитик',
+        badge: 'Analytics',
+        username: 'MarketAnalyst',
+        description: 'Смотрит графики, пользователей и финансовые показатели без прав модерации.',
+        userId: 8,
+        balance: 70800,
+        permissions: ['browse', 'analytics', 'audit']
+    },
+    moderator: {
+        title: 'Модератор',
+        badge: 'Moderation',
+        username: 'TradeModerator',
+        description: 'Проверяет жалобы, спорные сделки и подозрительные объявления.',
+        userId: 6,
+        balance: 92000,
+        permissions: ['browse', 'analytics', 'moderate', 'audit']
+    },
+    admin: {
+        title: 'Администратор',
+        badge: 'Admin',
+        username: 'MarketAdmin',
+        description: 'Управляет пользователями, ролями и операционными разделами маркета.',
+        userId: 2,
+        balance: 318250,
+        permissions: ['browse', 'buy', 'sell', 'history', 'analytics', 'moderate', 'manageUsers', 'audit']
+    },
+    tech_admin: {
+        title: 'Технический администратор',
+        badge: 'Tech Admin',
+        username: 'TechRoot',
+        description: 'Отвечает за деплой, доступность, demo API, SQL Server и системный аудит.',
+        userId: 7,
+        balance: 421500,
+        permissions: ['browse', 'analytics', 'system', 'audit', 'manageUsers']
+    },
+    owner: {
+        title: 'Главный администратор',
+        badge: 'Owner',
+        username: 'RootOwner',
+        description: 'Полный доступ ко всем demo-разделам и операциям.',
+        userId: 7,
+        balance: 421500,
+        permissions: ['full']
+    }
+};
+
+function getRoleConfig(roleId) {
+    return CS2_ROLES[roleId] || CS2_ROLES.guest;
+}
+
+function getCurrentRoleSession() {
+    try {
+        const stored = JSON.parse(localStorage.getItem(CS2_ROLE_STORAGE_KEY) || '{}');
+        const roleId = stored.role && CS2_ROLES[stored.role] ? stored.role : 'guest';
+        return { role: roleId, ...getRoleConfig(roleId), signedInAt: stored.signedInAt || null };
+    } catch (error) {
+        return { role: 'guest', ...CS2_ROLES.guest };
+    }
+}
+
+function roleCan(permission) {
+    const role = getCurrentRoleSession();
+    return role.permissions.includes('full') || role.permissions.includes(permission);
+}
+
+function roleCanOpenAdmin() {
+    return roleCan('moderate') || roleCan('manageUsers') || roleCan('system') || roleCan('full');
+}
+
+function loginAsRole(roleId) {
+    if (!CS2_ROLES[roleId] || roleId === 'guest') return;
+    localStorage.setItem(CS2_ROLE_STORAGE_KEY, JSON.stringify({
+        role: roleId,
+        signedInAt: new Date().toISOString()
+    }));
+    closeModal('login-modal');
+    applyRoleSession();
+    window.dispatchEvent(new CustomEvent('cs2-role-changed', { detail: getCurrentRoleSession() }));
+    showToast(`Вход выполнен: ${CS2_ROLES[roleId].title}`);
+}
+
+function logoutRole() {
+    localStorage.removeItem(CS2_ROLE_STORAGE_KEY);
+    applyRoleSession();
+    window.dispatchEvent(new CustomEvent('cs2-role-changed', { detail: getCurrentRoleSession() }));
+    showToast('Вы вышли из роли');
+}
+
+function openLoginModal() {
+    renderRoleOptions();
+    const modal = document.getElementById('login-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function renderRoleOptions() {
+    const wrap = document.getElementById('role-options');
+    if (!wrap) return;
+    const current = getCurrentRoleSession().role;
+    wrap.innerHTML = Object.entries(CS2_ROLES)
+        .filter(([roleId]) => roleId !== 'guest')
+        .map(([roleId, role]) => `
+            <button class="role-card ${current === roleId ? 'active' : ''}" onclick="loginAsRole('${roleId}')">
+                <span class="role-card-top">
+                    <strong>${esc(role.title)}</strong>
+                    <span class="role-chip">${esc(role.badge)}</span>
+                </span>
+                <span class="role-card-desc">${esc(role.description)}</span>
+                <span class="role-card-perms">${role.permissions.map(permission => esc(permission)).join(' / ')}</span>
+            </button>
+        `).join('');
+}
+
+function applyRoleSession() {
+    const session = getCurrentRoleSession();
+    const nameEl = document.getElementById('user-name');
+    const badgeEl = document.getElementById('user-role-badge');
+    const balanceLine = document.getElementById('balance-line');
+    const balanceEl = document.getElementById('user-balance');
+    const historyButton = document.getElementById('history-button');
+    const adminShortcut = document.getElementById('admin-shortcut');
+    const logoutButton = document.getElementById('logout-button');
+    const adminNav = document.getElementById('nav-admin');
+
+    if (nameEl) nameEl.textContent = session.username;
+    if (badgeEl) badgeEl.textContent = session.title;
+    if (balanceEl) balanceEl.textContent = fmtMoney(session.balance || 0) + ' ₽';
+    if (balanceLine) balanceLine.style.display = session.userId ? 'inline' : 'none';
+    if (historyButton) historyButton.style.display = roleCan('history') ? 'inline-flex' : 'none';
+    if (adminShortcut) adminShortcut.style.display = roleCanOpenAdmin() ? 'inline-flex' : 'none';
+    if (adminNav) adminNav.style.display = roleCanOpenAdmin() ? 'block' : 'none';
+    if (logoutButton) logoutButton.style.display = session.role === 'guest' ? 'none' : 'inline-flex';
+}
+
+window.CS2_ROLES = CS2_ROLES;
+
 // ─── API Helper ───────────────────────────────────────────────────────────────
 async function apiFetch(url) {
     const res = await fetch(url);
@@ -196,6 +361,13 @@ if (window.location.pathname === '/') {
 }
 // ─── Покупка скина ───────────────────────────────────────────
 async function buySkin(listingId, buyerId, price, skinName) {
+    if (!roleCan('buy')) {
+        openLoginModal();
+        showToast('Для покупки войдите как покупатель или администратор', true);
+        return;
+    }
+    const session = getCurrentRoleSession();
+    const targetBuyerId = session.userId || buyerId;
     if (!confirm(`Подтвердите покупку "${skinName}" за ${fmtMoney(price)} ₽?`)) {
         return;
     }
@@ -204,7 +376,7 @@ async function buySkin(listingId, buyerId, price, skinName) {
         const response = await fetch(`/api/buy/${listingId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ buyerId: buyerId })
+            body: JSON.stringify({ buyerId: targetBuyerId })
         });
         
         const result = await response.json();
@@ -221,7 +393,7 @@ async function buySkin(listingId, buyerId, price, skinName) {
                 }
                 // Обновляем баланс если есть
                 if (typeof updateBalanceDisplay === 'function') {
-                    updateBalanceDisplay(buyerId);
+                    updateBalanceDisplay(targetBuyerId);
                 }
             }, 1500);
         } else {
@@ -235,6 +407,13 @@ async function buySkin(listingId, buyerId, price, skinName) {
 
 // ─── Показать историю покупок ─────────────────────────────────
 async function showPurchaseHistory(userId) {
+    const session = getCurrentRoleSession();
+    const targetUserId = userId || session.userId;
+    if (!targetUserId || !roleCan('history')) {
+        openLoginModal();
+        showToast('Для истории покупок войдите как покупатель или администратор', true);
+        return;
+    }
     const modal = document.getElementById('history-modal');
     const content = document.getElementById('history-content');
     
@@ -244,7 +423,7 @@ async function showPurchaseHistory(userId) {
     content.innerHTML = '<div class="loading"><div class="spinner"></div>Загрузка истории...</div>';
     
     try {
-        const history = await apiFetch(`/api/user/${userId}/purchase-history`);
+        const history = await apiFetch(`/api/user/${targetUserId}/purchase-history`);
         
         if (!history.length) {
             content.innerHTML = '<div class="loading">📭 История покупок пуста</div>';
@@ -285,8 +464,14 @@ async function showPurchaseHistory(userId) {
 
 // ─── Обновление баланса (временно, пока нет авторизации) ─────
 async function updateBalanceDisplay(userId) {
+    const session = getCurrentRoleSession();
+    const targetUserId = userId || session.userId;
+    if (!targetUserId) {
+        applyRoleSession();
+        return;
+    }
     try {
-        const user = await apiFetch(`/api/user/${userId}/balance`);
+        const user = await apiFetch(`/api/user/${targetUserId}/balance`);
         const balanceEl = document.getElementById('user-balance');
         if (balanceEl) {
             balanceEl.textContent = fmtMoney(user.Balance) + ' ₽';
@@ -303,8 +488,8 @@ function closeModal(modalId) {
 }
 
 // ─── Клик вне модального окна для закрытия ─────────────────
-window.onclick = function(event) {
+document.addEventListener('click', function(event) {
     if (event.target.classList.contains('modal')) {
         event.target.style.display = 'none';
     }
-};
+});

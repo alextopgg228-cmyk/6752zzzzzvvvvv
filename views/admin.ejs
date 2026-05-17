@@ -1,0 +1,224 @@
+<%- include('partials/header') %>
+
+<div class="container">
+    <div class="hero" style="padding: 2.5rem 0 1.5rem; text-align:left;">
+        <h1 class="hero-title" style="font-size:2rem; margin-bottom:0.5rem;">Панель управления</h1>
+        <p class="text-sec">Разделы и действия меняются в зависимости от выбранной роли.</p>
+    </div>
+
+    <div id="admin-locked" class="access-lock" style="display:none;">
+        <div>
+            <div class="lock-title">Требуется служебная роль</div>
+            <p class="text-sec">Войдите как модератор, администратор или технический администратор, чтобы открыть панель.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openLoginModal()">Войти по роли</button>
+    </div>
+
+    <div id="admin-dashboard" style="display:none;">
+        <div class="role-summary mb-3">
+            <div>
+                <div class="text-muted text-sm">Текущая роль</div>
+                <div class="role-summary-title" id="admin-role-title">-</div>
+                <div class="text-sec" id="admin-role-desc">-</div>
+            </div>
+            <div class="role-chip" id="admin-role-chip">-</div>
+        </div>
+
+        <div class="stats-grid mb-3">
+            <div class="stat-card animate-in stagger-1">
+                <span class="stat-icon">ID</span>
+                <div class="stat-value" id="admin-users-count">-</div>
+                <div class="stat-label">Пользователей в demo</div>
+            </div>
+            <div class="stat-card animate-in stagger-2">
+                <span class="stat-icon">SQL</span>
+                <div class="stat-value" id="admin-db-status">OK</div>
+                <div class="stat-label">Статус демо-данных</div>
+            </div>
+            <div class="stat-card animate-in stagger-3">
+                <span class="stat-icon">GH</span>
+                <div class="stat-value">Pages</div>
+                <div class="stat-label">Публикация сайта</div>
+            </div>
+            <div class="stat-card animate-in stagger-4">
+                <span class="stat-icon">RBAC</span>
+                <div class="stat-value" id="admin-perm-count">-</div>
+                <div class="stat-label">Разрешений роли</div>
+            </div>
+        </div>
+
+        <div class="grid-2 mb-3">
+            <div class="card">
+                <div class="card-title">Разрешения</div>
+                <div id="permission-list" class="permission-grid"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Быстрые действия</div>
+                <div id="admin-actions" class="action-list"></div>
+            </div>
+        </div>
+
+        <div class="grid-2 mb-3">
+            <div class="card admin-section" data-permission="moderate">
+                <div class="card-title">Модерация маркета</div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Объект</th>
+                                <th>Причина</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody id="moderation-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card admin-section" data-permission="manageUsers">
+                <div class="card-title">Управление пользователями</div>
+                <div id="user-role-table" class="table-wrap"></div>
+            </div>
+        </div>
+
+        <div class="grid-2 mb-3">
+            <div class="card admin-section" data-permission="system">
+                <div class="card-title">Технический контур</div>
+                <div class="ops-list" id="tech-ops"></div>
+            </div>
+
+            <div class="card admin-section" data-permission="audit">
+                <div class="card-title">Журнал событий</div>
+                <div class="timeline" id="audit-log"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const ACTIONS_BY_PERMISSION = {
+    moderate: [
+        'Проверить жалобы на объявления',
+        'Скрыть подозрительный листинг',
+        'Открыть очередь спорных сделок'
+    ],
+    manageUsers: [
+        'Изменить роль пользователя',
+        'Заморозить аккаунт',
+        'Проверить историю баланса'
+    ],
+    analytics: [
+        'Скачать отчет по продажам',
+        'Проверить категории с просадкой',
+        'Открыть график конверсии'
+    ],
+    system: [
+        'Проверить деплой GitHub Pages',
+        'Проверить подключение SQL Server',
+        'Очистить кеш demo API'
+    ],
+    audit: [
+        'Открыть аудит входов',
+        'Сверить изменения ролей',
+        'Проверить ошибки API'
+    ]
+};
+
+const PERMISSION_TITLES = {
+    buy: 'Покупки',
+    sell: 'Продажа',
+    analytics: 'Аналитика',
+    moderate: 'Модерация',
+    manageUsers: 'Пользователи',
+    system: 'Технический доступ',
+    audit: 'Аудит',
+    full: 'Полный доступ'
+};
+
+function renderAdminDashboard() {
+    const session = getCurrentRoleSession();
+    const role = getRoleConfig(session.role);
+    const canOpen = roleCan('moderate') || roleCan('manageUsers') || roleCan('system') || roleCan('full');
+
+    document.getElementById('admin-locked').style.display = canOpen ? 'none' : 'flex';
+    document.getElementById('admin-dashboard').style.display = canOpen ? 'block' : 'none';
+    if (!canOpen) return;
+
+    document.getElementById('admin-role-title').textContent = role.title;
+    document.getElementById('admin-role-desc').textContent = role.description;
+    document.getElementById('admin-role-chip').textContent = role.badge;
+    document.getElementById('admin-perm-count').textContent = role.permissions.length;
+
+    apiFetch('/api/users-detail').then(users => {
+        document.getElementById('admin-users-count').textContent = users.length;
+        document.getElementById('user-role-table').innerHTML = `
+            <table>
+                <thead><tr><th>Пользователь</th><th>Баланс</th><th>Роль</th></tr></thead>
+                <tbody>${users.slice(0, 6).map((user, index) => `
+                    <tr>
+                        <td class="fw-600">${esc(user.Username)}</td>
+                        <td class="td-price">${fmtMoney(user.Balance)} ₽</td>
+                        <td><span class="role-chip">${['Покупатель','Продавец','Аналитик','Модератор','Администратор','Тех. администратор'][index % 6]}</span></td>
+                    </tr>
+                `).join('')}</tbody>
+            </table>
+        `;
+    });
+
+    document.getElementById('permission-list').innerHTML = role.permissions.map(permission => `
+        <div class="permission-item">
+            <span>${PERMISSION_TITLES[permission] || permission}</span>
+            <strong>Разрешено</strong>
+        </div>
+    `).join('');
+
+    const actionItems = role.permissions
+        .flatMap(permission => ACTIONS_BY_PERMISSION[permission] || [])
+        .slice(0, 7);
+    document.getElementById('admin-actions').innerHTML = actionItems.map(action => `
+        <button class="btn btn-secondary" onclick="showToast('Demo: ${esc(action)}')">${esc(action)}</button>
+    `).join('');
+
+    document.getElementById('moderation-table').innerHTML = [
+        ['Листинг #3', 'Цена выше рынка на 11%', 'На проверке'],
+        ['Пользователь DustDealer', 'Частые отмены сделок', 'Открыто'],
+        ['AWP Asiimov', 'Жалоба на описание', 'Решено']
+    ].map(row => `
+        <tr>
+            <td class="fw-600">${row[0]}</td>
+            <td class="text-sec">${row[1]}</td>
+            <td><span class="role-chip">${row[2]}</span></td>
+        </tr>
+    `).join('');
+
+    document.getElementById('tech-ops').innerHTML = [
+        ['GitHub Pages', 'Сборка dist из ветки main'],
+        ['Demo API', 'public/data/api.json'],
+        ['Backend режим', 'Express + SQL Server локально'],
+        ['Secrets', '.env не публикуется']
+    ].map(item => `
+        <div class="ops-item">
+            <strong>${item[0]}</strong>
+            <span>${item[1]}</span>
+        </div>
+    `).join('');
+
+    document.getElementById('audit-log').innerHTML = [
+        'Вход выполнен: ' + role.title,
+        'Проверены права панели управления',
+        'Demo API загружен из GitHub Pages',
+        'Секреты .env исключены из публикации'
+    ].map(item => `<div class="timeline-item">${item}</div>`).join('');
+
+    document.querySelectorAll('.admin-section').forEach(section => {
+        const permission = section.dataset.permission;
+        section.style.display = roleCan(permission) || roleCan('full') ? 'block' : 'none';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', renderAdminDashboard);
+window.addEventListener('cs2-role-changed', renderAdminDashboard);
+</script>
+
+<%- include('partials/footer') %>

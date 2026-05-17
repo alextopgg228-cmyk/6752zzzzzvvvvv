@@ -242,6 +242,13 @@ function escapeHtml(str) {
 loadMarket();
 // ─── Покупка скина ───────────────────────────────────────────
 async function buySkin(listingId, buyerId, price, skinName) {
+    if (!roleCan('buy')) {
+        openLoginModal();
+        showToast('Для покупки войдите как покупатель или администратор', true);
+        return;
+    }
+    const session = getCurrentRoleSession();
+    const targetBuyerId = session.userId || buyerId;
     if (!confirm(`Подтвердите покупку "${skinName}" за ${formatMoney(price)} ₽?`)) {
         return;
     }
@@ -250,7 +257,7 @@ async function buySkin(listingId, buyerId, price, skinName) {
         const response = await fetch(`/api/buy/${listingId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ buyerId: buyerId })
+            body: JSON.stringify({ buyerId: targetBuyerId })
         });
         
         const result = await response.json();

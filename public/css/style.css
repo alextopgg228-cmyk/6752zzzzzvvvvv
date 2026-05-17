@@ -713,6 +713,173 @@ canvas { max-width: 100%; }
 .toast.show { transform: translateX(0); }
 .toast.error { border-left-color: var(--accent3); }
 
+/* ─── Role login / admin demo ─── */
+#nav-admin { display: none; }
+
+.role-badge,
+.role-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 9px;
+    border: 1px solid rgba(74,159,232,0.35);
+    border-radius: 6px;
+    background: rgba(74,159,232,0.12);
+    color: var(--accent2);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.role-login-head,
+.role-summary,
+.access-lock {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.role-login-head {
+    margin-bottom: 1rem;
+}
+
+.role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 0.75rem;
+}
+
+.role-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    min-height: 148px;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card2);
+    color: var(--text-prim);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s, background 0.2s;
+}
+
+.role-card:hover,
+.role-card.active {
+    border-color: var(--accent);
+    background: var(--bg-hover);
+    transform: translateY(-2px);
+}
+
+.role-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.05rem;
+    letter-spacing: 0.4px;
+}
+
+.role-card-desc {
+    color: var(--text-sec);
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.role-card-perms {
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    margin-top: auto;
+}
+
+.role-summary,
+.access-lock {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+}
+
+.role-summary-title,
+.lock-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--text-prim);
+    text-transform: uppercase;
+}
+
+.permission-grid,
+.action-list,
+.ops-list,
+.timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.permission-item,
+.ops-item,
+.timeline-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card2);
+}
+
+.permission-item strong {
+    color: var(--green);
+    font-family: 'Rajdhani', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.action-list .btn {
+    justify-content: flex-start;
+    width: 100%;
+    text-align: left;
+}
+
+.ops-item {
+    align-items: flex-start;
+    flex-direction: column;
+}
+
+.ops-item span,
+.timeline-item {
+    color: var(--text-sec);
+    line-height: 1.45;
+}
+
+.timeline-item {
+    justify-content: flex-start;
+    position: relative;
+    padding-left: 1rem;
+}
+
+.timeline-item::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    position: absolute;
+    left: 0.35rem;
+    top: 1.15rem;
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
     .navbar { padding: 0 1rem; }
@@ -721,6 +888,12 @@ canvas { max-width: 100%; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .filter-bar { flex-direction: column; }
     .skins-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .role-login-head,
+    .role-summary,
+    .access-lock {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }
 
 /* ─── Animations ─── */
