@@ -1,0 +1,19 @@
+</div><!-- /page-wrapper -->
+
+<div id="toast" class="toast"></div>
+
+<script>
+    // Подсветка активной ссылки
+    const activePage = document.body.dataset.page;
+    if (activePage) {
+        const activeLink = document.getElementById(`nav-${activePage}`);
+        if (activeLink) activeLink.classList.add('active');
+    } else {
+        const path = window.location.pathname;
+        document.querySelectorAll('.nav-links a').forEach(a => {
+            if (a.getAttribute('href') === path) a.classList.add('active');
+        });
+    }
+</script>
+</body>
+</html>

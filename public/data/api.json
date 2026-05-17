@@ -1,0 +1,100 @@
+{
+  "stats": {
+    "TotalUsers": 128,
+    "TotalSkins": 342,
+    "ActiveListings": 24,
+    "CompletedTrades": 417,
+    "TotalVolume": 2850340.5
+  },
+  "currentUser": {
+    "UserID": 1,
+    "Username": "SkinMaster",
+    "Balance": 50000
+  },
+  "topListings": [
+    { "ListingID": 1, "SkinName": "Dragon Lore", "WeaponName": "AWP", "Quality": "Factory New", "Price": 420000, "SellerName": "NeoTrader" },
+    { "ListingID": 2, "SkinName": "Howl", "WeaponName": "M4A4", "Quality": "Minimal Wear", "Price": 260000, "SellerName": "KatowiceKing" },
+    { "ListingID": 3, "SkinName": "Fire Serpent", "WeaponName": "AK-47", "Quality": "Field-Tested", "Price": 180000, "SellerName": "DustDealer" },
+    { "ListingID": 4, "SkinName": "Medusa", "WeaponName": "AWP", "Quality": "Minimal Wear", "Price": 145000, "SellerName": "MiragePro" },
+    { "ListingID": 5, "SkinName": "Fade", "WeaponName": "Karambit", "Quality": "Factory New", "Price": 130000, "SellerName": "PixelBroker" }
+  ],
+  "topUsers": [
+    { "UserID": 7, "Username": "NeoTrader", "TotalTrades": 82, "Balance": 421500, "ActiveListings": 6 },
+    { "UserID": 2, "Username": "KatowiceKing", "TotalTrades": 76, "Balance": 318250, "ActiveListings": 4 },
+    { "UserID": 5, "Username": "DustDealer", "TotalTrades": 69, "Balance": 250900, "ActiveListings": 5 },
+    { "UserID": 3, "Username": "MiragePro", "TotalTrades": 61, "Balance": 180400, "ActiveListings": 3 },
+    { "UserID": 1, "Username": "SkinMaster", "TotalTrades": 54, "Balance": 50000, "ActiveListings": 2 }
+  ],
+  "popularSkins": [
+    { "SkinName": "Asiimov", "WeaponName": "AWP", "Quality": "Field-Tested", "TimesSold": 44, "AvgSoldPrice": 7200 },
+    { "SkinName": "Redline", "WeaponName": "AK-47", "Quality": "Minimal Wear", "TimesSold": 39, "AvgSoldPrice": 3850 },
+    { "SkinName": "Neo-Noir", "WeaponName": "USP-S", "Quality": "Factory New", "TimesSold": 33, "AvgSoldPrice": 2100 },
+    { "SkinName": "Vulcan", "WeaponName": "AK-47", "Quality": "Minimal Wear", "TimesSold": 28, "AvgSoldPrice": 18500 },
+    { "SkinName": "Printstream", "WeaponName": "M4A1-S", "Quality": "Field-Tested", "TimesSold": 25, "AvgSoldPrice": 12100 }
+  ],
+  "categories": [
+    { "CategoryName": "Rifles", "SalesCount": 162, "TotalRevenue": 980500, "AvgPrice": 6052.47 },
+    { "CategoryName": "Sniper Rifles", "SalesCount": 88, "TotalRevenue": 1120300, "AvgPrice": 12730.68 },
+    { "CategoryName": "Pistols", "SalesCount": 74, "TotalRevenue": 210900, "AvgPrice": 2850 },
+    { "CategoryName": "Knives", "SalesCount": 41, "TotalRevenue": 438000, "AvgPrice": 10682.93 },
+    { "CategoryName": "Gloves", "SalesCount": 22, "TotalRevenue": 100640.5, "AvgPrice": 4574.57 }
+  ],
+  "qualityStats": [
+    { "Quality": "Factory New", "TotalSkins": 78, "SalesCount": 92, "AvgSalePrice": 24800 },
+    { "Quality": "Minimal Wear", "TotalSkins": 96, "SalesCount": 126, "AvgSalePrice": 14350 },
+    { "Quality": "Field-Tested", "TotalSkins": 104, "SalesCount": 141, "AvgSalePrice": 8700 },
+    { "Quality": "Well-Worn", "TotalSkins": 38, "SalesCount": 36, "AvgSalePrice": 5200 },
+    { "Quality": "Battle-Scarred", "TotalSkins": 26, "SalesCount": 22, "AvgSalePrice": 3100 }
+  ],
+  "salesDynamics": [
+    { "TradeDay": "2026-05-04", "SalesCount": 18, "DailyRevenue": 128400 },
+    { "TradeDay": "2026-05-05", "SalesCount": 22, "DailyRevenue": 164300 },
+    { "TradeDay": "2026-05-06", "SalesCount": 17, "DailyRevenue": 98500 },
+    { "TradeDay": "2026-05-07", "SalesCount": 25, "DailyRevenue": 189200 },
+    { "TradeDay": "2026-05-08", "SalesCount": 30, "DailyRevenue": 240100 },
+    { "TradeDay": "2026-05-09", "SalesCount": 28, "DailyRevenue": 211700 },
+    { "TradeDay": "2026-05-10", "SalesCount": 35, "DailyRevenue": 302900 },
+    { "TradeDay": "2026-05-11", "SalesCount": 26, "DailyRevenue": 177600 },
+    { "TradeDay": "2026-05-12", "SalesCount": 31, "DailyRevenue": 221800 },
+    { "TradeDay": "2026-05-13", "SalesCount": 24, "DailyRevenue": 150400 },
+    { "TradeDay": "2026-05-14", "SalesCount": 29, "DailyRevenue": 214000 },
+    { "TradeDay": "2026-05-15", "SalesCount": 33, "DailyRevenue": 264500 },
+    { "TradeDay": "2026-05-16", "SalesCount": 37, "DailyRevenue": 330200 },
+    { "TradeDay": "2026-05-17", "SalesCount": 42, "DailyRevenue": 368900 }
+  ],
+  "richUsers": [
+    { "UserID": 7, "Username": "NeoTrader", "Balance": 421500, "TotalTrades": 82, "DifferenceFromAvg": 255820 },
+    { "UserID": 2, "Username": "KatowiceKing", "Balance": 318250, "TotalTrades": 76, "DifferenceFromAvg": 152570 },
+    { "UserID": 5, "Username": "DustDealer", "Balance": 250900, "TotalTrades": 69, "DifferenceFromAvg": 85220 },
+    { "UserID": 3, "Username": "MiragePro", "Balance": 180400, "TotalTrades": 61, "DifferenceFromAvg": 14720 }
+  ],
+  "usersDetail": [
+    { "UserID": 1, "Username": "SkinMaster", "Balance": 50000, "TotalTrades": 54, "InventoryValue": 88000, "ActiveListings": 2, "AvgSalePrice": 7600 },
+    { "UserID": 2, "Username": "KatowiceKing", "Balance": 318250, "TotalTrades": 76, "InventoryValue": 520000, "ActiveListings": 4, "AvgSalePrice": 15400 },
+    { "UserID": 3, "Username": "MiragePro", "Balance": 180400, "TotalTrades": 61, "InventoryValue": 270300, "ActiveListings": 3, "AvgSalePrice": 12100 },
+    { "UserID": 4, "Username": "PixelBroker", "Balance": 132900, "TotalTrades": 48, "InventoryValue": 210000, "ActiveListings": 5, "AvgSalePrice": 9800 },
+    { "UserID": 5, "Username": "DustDealer", "Balance": 250900, "TotalTrades": 69, "InventoryValue": 340200, "ActiveListings": 5, "AvgSalePrice": 13200 },
+    { "UserID": 6, "Username": "InfernoVault", "Balance": 92000, "TotalTrades": 35, "InventoryValue": 140600, "ActiveListings": 2, "AvgSalePrice": 6700 },
+    { "UserID": 7, "Username": "NeoTrader", "Balance": 421500, "TotalTrades": 82, "InventoryValue": 680000, "ActiveListings": 6, "AvgSalePrice": 18900 },
+    { "UserID": 8, "Username": "CacheCollector", "Balance": 70800, "TotalTrades": 28, "InventoryValue": 99500, "ActiveListings": 1, "AvgSalePrice": 4900 }
+  ],
+  "listings": [
+    { "ListingID": 1, "SkinName": "Dragon Lore", "WeaponName": "AWP", "Quality": "Factory New", "FloatValue": 0.0214, "ImageURL": "", "WearRating": "Excellent", "Price": 420000, "SellerName": "NeoTrader", "PriceRating": "Above Market", "MarketPrice": 395000 },
+    { "ListingID": 2, "SkinName": "Howl", "WeaponName": "M4A4", "Quality": "Minimal Wear", "FloatValue": 0.0831, "ImageURL": "", "WearRating": "Good", "Price": 260000, "SellerName": "KatowiceKing", "PriceRating": "Market Price", "MarketPrice": 255000 },
+    { "ListingID": 3, "SkinName": "Fire Serpent", "WeaponName": "AK-47", "Quality": "Field-Tested", "FloatValue": 0.2145, "ImageURL": "", "WearRating": "Average", "Price": 180000, "SellerName": "DustDealer", "PriceRating": "Above Market", "MarketPrice": 162000 },
+    { "ListingID": 4, "SkinName": "Medusa", "WeaponName": "AWP", "Quality": "Minimal Wear", "FloatValue": 0.1122, "ImageURL": "", "WearRating": "Good", "Price": 145000, "SellerName": "MiragePro", "PriceRating": "Market Price", "MarketPrice": 150000 },
+    { "ListingID": 5, "SkinName": "Fade", "WeaponName": "Karambit", "Quality": "Factory New", "FloatValue": 0.0187, "ImageURL": "", "WearRating": "Excellent", "Price": 130000, "SellerName": "PixelBroker", "PriceRating": "Below Market", "MarketPrice": 146000 },
+    { "ListingID": 6, "SkinName": "Vulcan", "WeaponName": "AK-47", "Quality": "Minimal Wear", "FloatValue": 0.094, "ImageURL": "", "WearRating": "Good", "Price": 18500, "SellerName": "InfernoVault", "PriceRating": "Market Price", "MarketPrice": 18000 },
+    { "ListingID": 7, "SkinName": "Printstream", "WeaponName": "M4A1-S", "Quality": "Field-Tested", "FloatValue": 0.255, "ImageURL": "", "WearRating": "Average", "Price": 12100, "SellerName": "CacheCollector", "PriceRating": "Below Market", "MarketPrice": 14000 },
+    { "ListingID": 8, "SkinName": "Asiimov", "WeaponName": "AWP", "Quality": "Field-Tested", "FloatValue": 0.331, "ImageURL": "", "WearRating": "Average", "Price": 7200, "SellerName": "SkinMaster", "PriceRating": "Market Price", "MarketPrice": 7300 },
+    { "ListingID": 9, "SkinName": "Neo-Noir", "WeaponName": "USP-S", "Quality": "Factory New", "FloatValue": 0.041, "ImageURL": "", "WearRating": "Excellent", "Price": 2100, "SellerName": "PixelBroker", "PriceRating": "Below Market", "MarketPrice": 2400 },
+    { "ListingID": 10, "SkinName": "Redline", "WeaponName": "AK-47", "Quality": "Minimal Wear", "FloatValue": 0.138, "ImageURL": "", "WearRating": "Good", "Price": 3850, "SellerName": "DustDealer", "PriceRating": "Market Price", "MarketPrice": 3900 }
+  ],
+  "purchaseHistory": {
+    "1": [
+      { "TradeID": 1001, "TradeDate": "2026-05-16T12:20:00.000Z", "Price": 7200, "SkinName": "Asiimov", "WeaponName": "AWP", "Quality": "Field-Tested", "SellerName": "DustDealer" },
+      { "TradeID": 1002, "TradeDate": "2026-05-14T09:45:00.000Z", "Price": 2100, "SkinName": "Neo-Noir", "WeaponName": "USP-S", "Quality": "Factory New", "SellerName": "PixelBroker" },
+      { "TradeID": 1003, "TradeDate": "2026-05-11T18:10:00.000Z", "Price": 3850, "SkinName": "Redline", "WeaponName": "AK-47", "Quality": "Minimal Wear", "SellerName": "InfernoVault" }
+    ]
+  }
+}

@@ -1,0 +1,272 @@
+<%- include('partials/header') %>
+
+<div class="container">
+    <div class="hero" style="padding: 2.5rem 0 1.5rem; text-align:left;">
+        <h1 class="hero-title" style="font-size:2rem; margin-bottom:0.5rem;">
+            🛒 Маркет скинов
+        </h1>
+        <p class="text-sec">Активные объявления о продаже</p>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="filter-bar">
+        <div class="form-group" style="flex:2; min-width:180px;">
+            <label class="form-label">🔍 Поиск</label>
+            <input type="text" id="f-search" class="form-control" placeholder="Название скина или оружие...">
+        </div>
+        <div class="form-group" style="flex:1; min-width:140px;">
+            <label class="form-label">Качество</label>
+            <select id="f-quality" class="form-control">
+                <option value="all">Все</option>
+                <option value="Factory New">Factory New</option>
+                <option value="Minimal Wear">Minimal Wear</option>
+                <option value="Field-Tested">Field-Tested</option>
+                <option value="Well-Worn">Well-Worn</option>
+                <option value="Battle-Scarred">Battle-Scarred</option>
+            </select>
+        </div>
+        <div class="form-group" style="min-width:110px;">
+            <label class="form-label">Цена от (₽)</label>
+            <input type="number" id="f-min" class="form-control" placeholder="0">
+        </div>
+        <div class="form-group" style="min-width:110px;">
+            <label class="form-label">Цена до (₽)</label>
+            <input type="number" id="f-max" class="form-control" placeholder="∞">
+        </div>
+        <div class="form-group" style="min-width:140px;">
+            <label class="form-label">Сортировка</label>
+            <select id="f-sort" class="form-control">
+                <option value="price_desc">Цена ↓</option>
+                <option value="price_asc">Цена ↑</option>
+                <option value="wear">Износ ↑</option>
+                <option value="name">Название</option>
+            </select>
+        </div>
+        <div class="form-group" style="justify-content:flex-end;">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-primary" onclick="loadMarket()">Применить</button>
+        </div>
+        <div class="form-group" style="justify-content:flex-end;">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-secondary" onclick="resetFilters()">Сбросить</button>
+        </div>
+    </div>
+
+    <div class="section-header">
+        <div class="section-title" id="market-count">Объявления</div>
+        <div class="flex gap-1">
+            <button class="btn btn-sm btn-secondary" id="view-grid" onclick="setView('grid')" title="Сетка">▦</button>
+            <button class="btn btn-sm btn-outline" id="view-table" onclick="setView('table')" title="Таблица">☰</button>
+        </div>
+    </div>
+
+    <div id="market-content">
+        <div class="loading"><div class="spinner"></div>Загрузка объявлений...</div>
+    </div>
+</div>
+
+<script>
+let currentView = 'grid';
+let allListings = [];
+
+function setView(v) {
+    currentView = v;
+    document.getElementById('view-grid').className = `btn btn-sm ${v === 'grid' ? 'btn-secondary' : 'btn-outline'}`;
+    document.getElementById('view-table').className = `btn btn-sm ${v === 'table' ? 'btn-secondary' : 'btn-outline'}`;
+    renderListings(allListings);
+}
+
+function resetFilters() {
+    document.getElementById('f-search').value = '';
+    document.getElementById('f-quality').value = 'all';
+    document.getElementById('f-min').value = '';
+    document.getElementById('f-max').value = '';
+    document.getElementById('f-sort').value = 'price_desc';
+    loadMarket();
+}
+
+let searchTimeout;
+document.getElementById('f-search').addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(loadMarket, 400);
+});
+
+async function loadMarket() {
+    document.getElementById('market-content').innerHTML = '<div class="loading"><div class="spinner"></div>Загрузка...</div>';
+    
+    const params = new URLSearchParams({
+        quality: document.getElementById('f-quality').value,
+        minPrice: document.getElementById('f-min').value,
+        maxPrice: document.getElementById('f-max').value,
+        search: document.getElementById('f-search').value,
+        sort: document.getElementById('f-sort').value,
+    });
+    
+    try {
+        console.log('Запрос к API:', '/api/listings?' + params);
+        const response = await fetch('/api/listings?' + params);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Получено данных:', data);
+        
+        allListings = data;
+        document.getElementById('market-count').textContent = `Найдено: ${allListings.length} объявлений`;
+        renderListings(allListings);
+    } catch(e) {
+        console.error('Ошибка:', e);
+        document.getElementById('market-content').innerHTML = `
+            <div class="loading" style="flex-direction:column; gap:8px; color:var(--accent3);">
+                <span>❌ Ошибка загрузки</span>
+                <span class="text-sm">${e.message}</span>
+                <button class="btn btn-sm btn-secondary" onclick="loadMarket()">Повторить</button>
+            </div>`;
+    }
+}
+
+function renderListings(items) {
+    if (!items.length) {
+        document.getElementById('market-content').innerHTML = `
+            <div class="loading" style="flex-direction:column; gap:8px;">
+                <span>🔍</span>
+                <span>Объявления не найдены</span>
+            </div>`;
+        return;
+    }
+
+    if (currentView === 'grid') {
+        document.getElementById('market-content').innerHTML = `
+            <div class="skins-grid">${items.map(l => skinCard(l)).join('')}</div>`;
+    } else {
+        document.getElementById('market-content').innerHTML = `
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Скин</th><th>Оружие</th><th>Качество</th>
+                            <th>Float</th><th>Износ</th><th>Цена</th>
+                            <th>Рынок</th><th>Продавец</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody>${items.map(l => `
+                        <tr>
+                            <td class="fw-600">${escapeHtml(l.SkinName)}</td>
+                            <td class="text-sec">${escapeHtml(l.WeaponName || '')}</td>
+                            <td>${getQualityBadge(l.Quality)}</td>
+                            <td class="td-mono text-sec">${l.FloatValue != null ? parseFloat(l.FloatValue).toFixed(4) : '—'}</td>
+                            <td>${getWearBadge(l.WearRating)}</td>
+                            <td class="td-price">${formatMoney(l.Price)} ₽</td>
+                            <td class="${getPriceClass(l.PriceRating)}">${escapeHtml(l.PriceRating || '')}</td>
+                            <td class="text-sec text-sm">${escapeHtml(l.SellerName)}</td>
+                            '<td><button class="btn btn-sm btn-primary" onclick="buySkin(' + l.ListingID + ', 1, ' + l.Price + ', \'' + escapeHtml(l.SkinName) + '\')">Купить</button></td>'
+                        </tr>
+                    `).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+    }
+}
+
+function skinCard(l) {
+    const float = l.FloatValue != null ? parseFloat(l.FloatValue) : 0.5;
+    const wearPct = (float * 100).toFixed(0);
+    
+    // Фото скина (если есть, иначе заглушка)
+    const skinImage = l.ImageURL || 'https://via.placeholder.com/360x200/1e2d45/7a8aa8?text=CS2+Skin';
+    
+    return `
+    <div class="skin-card animate-in">
+        <div class="skin-card-header">
+            <img src="${skinImage}" 
+                 alt="${escapeHtml(l.SkinName)}"
+                 class="skin-image"
+                 onerror="this.src='https://via.placeholder.com/360x200/1e2d45/7a8aa8?text=No+Image'">
+            <div class="skin-wear-bar">
+                <div class="skin-wear-fill" style="width:${wearPct}%"></div>
+            </div>
+        </div>
+        <div class="skin-card-body">
+            <div class="skin-name" title="${escapeHtml(l.SkinName)}">${escapeHtml(l.SkinName)}</div>
+            <div class="skin-weapon">${escapeHtml(l.WeaponName || 'Unknown')}</div>
+            <div class="skin-meta">
+                ${getQualityBadge(l.Quality)}
+                <span class="skin-float">float: ${float.toFixed(4)}</span>
+            </div>
+            <div class="${getPriceClass(l.PriceRating)}" style="font-size:0.72rem;">${escapeHtml(l.PriceRating || '')}</div>
+        </div>
+        <div class="skin-card-footer">
+            <div class="skin-price">${formatMoney(l.Price)} ₽</div>
+            <button class="btn btn-sm btn-primary" onclick="buySkin(${l.ListingID}, 1, ${l.Price}, '${escapeHtml(l.SkinName)}')">Купить</button>
+        </div>
+    </div>`;
+}
+
+function getWearBadge(w) {
+    const map = {
+        'Excellent': 'text-green', 'Good': 'text-blue',
+        'Average': 'text-accent', 'Poor': 'text-red'
+    };
+    return `<span class="${map[w] || 'text-sec'} text-sm fw-600">${w || '—'}</span>`;
+}
+
+function getPriceClass(p) {
+    if (p === 'Below Market') return 'price-below';
+    if (p === 'Above Market') return 'price-above';
+    return 'price-market';
+}
+
+function getQualityBadge(q) {
+    if (!q) return '<span class="quality-badge">—</span>';
+    const short = {
+        'Factory New': 'FN', 'Minimal Wear': 'MW', 'Field-Tested': 'FT',
+        'Well-Worn': 'WW', 'Battle-Scarred': 'BS'
+    }[q] || q.substring(0, 2).toUpperCase();
+    const cls = 'quality-' + short;
+    return `<span class="quality-badge ${cls}" title="${escapeHtml(q)}">${short}</span>`;
+}
+
+function formatMoney(n) {
+    if (n == null) return '0';
+    return Number(n).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+loadMarket();
+// ─── Покупка скина ───────────────────────────────────────────
+async function buySkin(listingId, buyerId, price, skinName) {
+    if (!confirm(`Подтвердите покупку "${skinName}" за ${formatMoney(price)} ₽?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/buy/${listingId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ buyerId: buyerId })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ ${result.message}\nСписано: ${formatMoney(result.price)} ₽\nКомиссия: ${formatMoney(result.commission)} ₽`);
+            loadUserBalance(); // Обновляем баланс
+            loadMarket(); // Обновляем маркет
+        } else {
+            alert(`❌ Ошибка: ${result.error}`);
+        }
+    } catch(err) {
+        console.error('Ошибка покупки:', err);
+        alert(`❌ Ошибка: ${err.message}`);
+    }
+}
+</script>
+
+<%- include('partials/footer') %>

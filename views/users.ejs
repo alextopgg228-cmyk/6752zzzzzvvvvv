@@ -1,0 +1,125 @@
+<%- include('partials/header') %>
+
+<div class="container">
+    <div class="hero" style="padding: 2.5rem 0 1.5rem; text-align:left;">
+        <h1 class="hero-title" style="font-size:2rem; margin-bottom:0.5rem;">👥 Пользователи</h1>
+        <p class="text-sec">Детальная информация по всем участникам платформы</p>
+    </div>
+
+    <div class="stats-grid mb-3" id="user-stats">
+        <div class="stat-card animate-in stagger-1">
+            <span class="stat-icon">👑</span>
+            <div class="stat-value" id="us-richest">—</div>
+            <div class="stat-label">Топ по балансу</div>
+        </div>
+        <div class="stat-card animate-in stagger-2">
+            <span class="stat-icon">🏆</span>
+            <div class="stat-value" id="us-trader">—</div>
+            <div class="stat-label">Топ по сделкам</div>
+        </div>
+        <div class="stat-card animate-in stagger-3">
+            <span class="stat-icon">💎</span>
+            <div class="stat-value" id="us-inv">—</div>
+            <div class="stat-label">Топ инвентарь (₽)</div>
+        </div>
+    </div>
+
+    <div class="card animate-in">
+        <div class="section-header" style="border:none; margin-bottom:1rem;">
+            <div class="section-title">Все пользователи</div>
+            <input type="text" id="user-search" class="form-control" style="max-width:220px;"
+                   placeholder="Поиск по имени...">
+        </div>
+        <div id="users-table-wrap" class="table-wrap">
+            <div class="loading"><div class="spinner"></div>Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+var allUsers = [];
+
+document.getElementById('user-search').addEventListener('input', function() {
+    var q = this.value.toLowerCase();
+    var filtered = allUsers.filter(function(u) {
+        return u.Username && u.Username.toLowerCase().indexOf(q) !== -1;
+    });
+    renderUsersTable(filtered);
+});
+
+function loadUsers() {
+    fetch('/api/users-detail')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.error) {
+                document.getElementById('users-table-wrap').innerHTML =
+                    '<div class="loading" style="color:var(--accent3);">Ошибка: ' + data.error + '</div>';
+                return;
+            }
+            allUsers = data;
+
+            if (allUsers.length > 0) {
+                var byBal = allUsers.slice().sort(function(a,b){ return b.Balance - a.Balance; });
+                var byTr  = allUsers.slice().sort(function(a,b){ return b.TotalTrades - a.TotalTrades; });
+                var byInv = allUsers.slice().sort(function(a,b){ return b.InventoryValue - a.InventoryValue; });
+                document.getElementById('us-richest').textContent = byBal[0].Username || '—';
+                document.getElementById('us-trader').textContent  = byTr[0].Username  || '—';
+                document.getElementById('us-inv').textContent     = Number(byInv[0].InventoryValue||0).toLocaleString('ru-RU') + ' ₽';
+            }
+
+            renderUsersTable(allUsers);
+        })
+        .catch(function(err) {
+            document.getElementById('users-table-wrap').innerHTML =
+                '<div class="loading" style="color:var(--accent3);">Ошибка сети: ' + err.message + '</div>';
+        });
+}
+
+function renderUsersTable(users) {
+    if (!users.length) {
+        document.getElementById('users-table-wrap').innerHTML = '<div class="loading">Нет данных</div>';
+        return;
+    }
+    var rows = users.map(function(u, i) {
+        return '<tr>' +
+            '<td class="text-muted text-sm">' + (i+1) + '</td>' +
+            '<td><div class="fw-600">' + (u.Username||'—') + '</div><div class="text-sm text-muted">#' + u.UserID + '</div></td>' +
+            '<td class="td-price">' + Number(u.Balance||0).toLocaleString('ru-RU') + ' ₽</td>' +
+            '<td class="text-accent fw-600">' + (u.TotalTrades||0) + '</td>' +
+            '<td class="text-blue">' + Number(u.InventoryValue||0).toLocaleString('ru-RU') + ' ₽</td>' +
+            '<td class="text-sec">' + (u.ActiveListings||0) + '</td>' +
+            '<td class="text-sec">' + Number(u.AvgSalePrice||0).toLocaleString('ru-RU') + ' ₽</td>' +
+        '</tr>';
+    }).join('');
+
+    document.getElementById('users-table-wrap').innerHTML =
+        '<table>' +
+        '<thead><tr>' +
+            '<th>#</th>' +
+            '<th onclick="sortUsers(\'Username\')">Пользователь ↕</th>' +
+            '<th onclick="sortUsers(\'Balance\')">Баланс ↕</th>' +
+            '<th onclick="sortUsers(\'TotalTrades\')">Сделок ↕</th>' +
+            '<th onclick="sortUsers(\'InventoryValue\')">Инвентарь ↕</th>' +
+            '<th onclick="sortUsers(\'ActiveListings\')">Объявлений ↕</th>' +
+            '<th onclick="sortUsers(\'AvgSalePrice\')">Ср. сделка ↕</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+        '</table>';
+}
+
+var sortDir = {};
+function sortUsers(field) {
+    sortDir[field] = !sortDir[field];
+    var dir = sortDir[field] ? 1 : -1;
+    var sorted = allUsers.slice().sort(function(a, b) {
+        var av = a[field] || 0, bv = b[field] || 0;
+        if (typeof av === 'string') return av.localeCompare(bv) * dir;
+        return (av - bv) * dir;
+    });
+    renderUsersTable(sorted);
+}
+
+loadUsers();
+</script>
+
+<%- include('partials/footer') %>

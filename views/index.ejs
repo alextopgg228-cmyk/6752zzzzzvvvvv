@@ -1,0 +1,152 @@
+<%- include('partials/header') %>
+
+<div class="container">
+    <!-- Hero -->
+    <div class="hero">
+        <div class="hero-glow"></div>
+        <h1 class="hero-title animate-in">
+            Маркет скинов<br><span class="highlight">Counter-Strike 2</span>
+        </h1>
+        <p class="hero-subtitle animate-in stagger-1">
+            Торговая площадка для покупки и продажи внутриигровых предметов CS2.</span>
+        </p>
+        <div class="flex gap-1 justify-content-center animate-in stagger-2" style="justify-content:center;">
+            <a href="<%= typeof marketPath !== 'undefined' ? marketPath : '/market' %>" class="btn btn-primary">Открыть маркет</a>
+            <a href="<%= typeof analyticsPath !== 'undefined' ? analyticsPath : '/analytics' %>" class="btn btn-secondary">Аналитика</a>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div id="stats-grid" class="stats-grid mb-3">
+        <div class="stat-card stagger-1 animate-in">
+            <span class="stat-icon">👥</span>
+            <div class="stat-value" id="stat-users">—</div>
+            <div class="stat-label">Пользователей</div>
+        </div>
+        <div class="stat-card stagger-2 animate-in">
+            <span class="stat-icon">🔫</span>
+            <div class="stat-value" id="stat-skins">—</div>
+            <div class="stat-label">Скинов в базе</div>
+        </div>
+        <div class="stat-card stagger-3 animate-in">
+            <span class="stat-icon">📋</span>
+            <div class="stat-value" id="stat-listings">—</div>
+            <div class="stat-label">Активных объявлений</div>
+        </div>
+        <div class="stat-card stagger-4 animate-in">
+            <span class="stat-icon">✅</span>
+            <div class="stat-value" id="stat-trades">—</div>
+            <div class="stat-label">Сделок совершено</div>
+        </div>
+        <div class="stat-card stagger-5 animate-in">
+            <span class="stat-icon">💰</span>
+            <div class="stat-value" id="stat-volume">—</div>
+            <div class="stat-label">Общий оборот (₽)</div>
+        </div>
+    </div>
+
+    <div class="grid-2 mb-3">
+        <!-- Топ объявлений -->
+        <div class="card animate-in stagger-1">
+            <div class="card-title">Топ 5 дорогих объявлений</div>
+            <div id="top-listings-wrap" class="table-wrap">
+                <div class="loading"><div class="spinner"></div>Загрузка...</div>
+            </div>
+        </div>
+
+        <!-- Топ пользователей -->
+        <div class="card animate-in stagger-2">
+            <div class="card-title">Топ 5 по сделкам</div>
+            <div id="top-users-wrap" class="table-wrap">
+                <div class="loading"><div class="spinner"></div>Загрузка...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Популярные скины -->
+    <div class="card animate-in mb-3">
+        <div class="card-title">Самые популярные скины</div>
+        <div id="popular-skins-wrap" class="table-wrap">
+            <div class="loading"><div class="spinner"></div>Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadHome() {
+    // Статистика
+    try {
+        const s = await apiFetch('/api/stats');
+        document.getElementById('stat-users').textContent    = fmt(s.TotalUsers);
+        document.getElementById('stat-skins').textContent   = fmt(s.TotalSkins);
+        document.getElementById('stat-listings').textContent = fmt(s.ActiveListings);
+        document.getElementById('stat-trades').textContent  = fmt(s.CompletedTrades);
+        document.getElementById('stat-volume').textContent  = fmtMoney(s.TotalVolume);
+    } catch(e) { console.error(e); }
+
+    // Топ объявлений
+    try {
+        const listings = await apiFetch('/api/top-listings');
+        document.getElementById('top-listings-wrap').innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>Скин</th><th>Оружие</th><th>Качество</th><th>Цена</th><th>Продавец</th>
+                </tr></thead>
+                <tbody>${listings.map(l => `
+                    <tr>
+                        <td class="fw-600">${esc(l.SkinName)}</td>
+                        <td class="text-sec">${esc(l.WeaponName||'')}</td>
+                        <td>${qualityBadge(l.Quality)}</td>
+                        <td class="td-price">${fmtMoney(l.Price)} ₽</td>
+                        <td class="text-sec text-sm">${esc(l.SellerName)}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+    } catch(e) { document.getElementById('top-listings-wrap').innerHTML = errHtml(e); }
+
+    // Топ пользователей
+    try {
+        const users = await apiFetch('/api/top-users');
+        document.getElementById('top-users-wrap').innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>#</th><th>Пользователь</th><th>Сделок</th><th>Баланс</th><th>Объявлений</th>
+                </tr></thead>
+                <tbody>${users.map((u,i) => `
+                    <tr>
+                        <td class="text-accent fw-700">#${i+1}</td>
+                        <td class="fw-600">${esc(u.Username)}</td>
+                        <td class="text-accent">${fmt(u.TotalTrades)}</td>
+                        <td class="td-price">${fmtMoney(u.Balance)} ₽</td>
+                        <td class="text-sec">${fmt(u.ActiveListings)}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+    } catch(e) { document.getElementById('top-users-wrap').innerHTML = errHtml(e); }
+
+    // Популярные скины
+    try {
+        const skins = await apiFetch('/api/popular-skins');
+        document.getElementById('popular-skins-wrap').innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>#</th><th>Скин</th><th>Оружие</th><th>Качество</th><th>Продано раз</th><th>Ср. цена</th>
+                </tr></thead>
+                <tbody>${skins.map((s,i) => `
+                    <tr>
+                        <td class="text-accent fw-700">#${i+1}</td>
+                        <td class="fw-600">${esc(s.SkinName)}</td>
+                        <td class="text-sec">${esc(s.WeaponName||'')}</td>
+                        <td>${qualityBadge(s.Quality)}</td>
+                        <td class="text-green fw-600">${fmt(s.TimesSold)}</td>
+                        <td class="td-price">${fmtMoney(s.AvgSoldPrice)} ₽</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+    } catch(e) { document.getElementById('popular-skins-wrap').innerHTML = errHtml(e); }
+}
+
+loadHome();
+</script>
+
+<%- include('partials/footer') %>

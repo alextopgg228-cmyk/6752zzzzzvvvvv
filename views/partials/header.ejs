@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 Skin Market — pr_Maksimenkov_skins</title>
+    <link rel="stylesheet" href="<%= typeof assetBase !== 'undefined' ? assetBase : '' %>/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        window.CS2_STATIC_MODE = <%= typeof staticMode !== 'undefined' && staticMode ? 'true' : 'false' %>;
+        window.CS2_ASSET_BASE = '<%= typeof assetBase !== 'undefined' ? assetBase : '' %>';
+    </script>
+    <script src="<%= typeof assetBase !== 'undefined' ? assetBase : '' %>/js/app.js"></script>
+    <style>
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.8);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-content {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        max-width: 900px;
+        width: 90%;
+        max-height: 80vh;
+        overflow: auto;
+        animation: fadeInUp 0.3s ease;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 {
+        font-family: 'Rajdhani', sans-serif;
+        color: var(--accent);
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-sec);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .modal-close:hover {
+        color: var(--accent3);
+    }
+    .modal-body {
+        padding: 1.5rem;
+    }
+    .user-panel {
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 20px;
+        z-index: 999;
+        backdrop-filter: blur(8px);
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }
+    .user-balance {
+        color: var(--accent);
+        font-weight: 700;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    .history-btn {
+        background: var(--bg-card2);
+        border: 1px solid var(--border);
+        padding: 4px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.8rem;
+    }
+    .history-btn:hover {
+        border-color: var(--accent2);
+        color: var(--accent2);
+    }
+    @media (max-width: 768px) {
+        .user-panel {
+            top: auto;
+            bottom: 10px;
+            right: 10px;
+            left: 10px;
+            justify-content: center;
+        }
+    }
+    </style>
+</head>
+<body data-page="<%= typeof pageId !== 'undefined' ? pageId : '' %>">
+
+<nav class="navbar">
+    <a href="<%= typeof homePath !== 'undefined' ? homePath : '/' %>" class="nav-logo">
+        <div class="logo-icon">⬡</div>
+        CS2 <span class="accent">MARKET</span>
+    </a>
+    <ul class="nav-links">
+        <li><a href="<%= typeof homePath !== 'undefined' ? homePath : '/' %>" id="nav-home">Главная</a></li>
+        <li><a href="<%= typeof marketPath !== 'undefined' ? marketPath : '/market' %>" id="nav-market">Маркет <span class="nav-badge">LIVE</span></a></li>
+        <li><a href="<%= typeof analyticsPath !== 'undefined' ? analyticsPath : '/analytics' %>" id="nav-analytics">Аналитика</a></li>
+        <li><a href="<%= typeof usersPath !== 'undefined' ? usersPath : '/users' %>" id="nav-users">Пользователи</a></li>
+    </ul>
+</nav>
+
+<div class="user-panel">
+    <span>👤 Пользователь: <strong id="user-name">SkinMaster</strong></span>
+    <span>💰 Баланс: <span id="user-balance" class="user-balance">0 ₽</span></span>
+    <button class="history-btn" onclick="showPurchaseHistory(1)">📜 История покупок</button>
+</div>
+
+<div id="history-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📜 История покупок</h3>
+            <button class="modal-close" onclick="closeModal('history-modal')">&times;</button>
+        </div>
+        <div class="modal-body" id="history-content">
+            <div class="loading"><div class="spinner"></div>Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<div class="page-wrapper">
+
+<script>
+    async function loadUserBalance() {
+        try {
+            const response = await fetch('/api/user/1/balance');
+            const data = await response.json();
+            const balanceEl = document.getElementById('user-balance');
+            if (balanceEl && data.Balance !== undefined) {
+                balanceEl.textContent = Number(data.Balance).toLocaleString('ru-RU') + ' ₽';
+            }
+        } catch(e) {
+            console.error('Ошибка загрузки баланса:', e);
+            const balanceEl = document.getElementById('user-balance');
+            if (balanceEl) balanceEl.textContent = '50,000 ₽';
+        }
+    }
+    
+    async function showPurchaseHistory(userId) {
+        const modal = document.getElementById('history-modal');
+        const content = document.getElementById('history-content');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        content.innerHTML = '<div class="loading"><div class="spinner"></div>Загрузка истории...</div>';
+        try {
+            const response = await fetch(`/api/user/${userId}/purchase-history`);
+            const history = await response.json();
+            if (!history.length) {
+                content.innerHTML = '<div class="loading">📭 История покупок пуста</div>';
+            } else {
+                content.innerHTML = `
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Скин</th>
+                                    <th>Оружие</th>
+                                    <th>Качество</th>
+                                    <th>Цена</th>
+                                    <th>Продавец</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${history.map(item => `
+                                    <tr>
+                                        <td class="text-sm">${new Date(item.TradeDate).toLocaleDateString('ru-RU')}</td>
+                                        <td class="fw-600">${escapeHtml(item.SkinName)}</td>
+                                        <td class="text-sec">${escapeHtml(item.WeaponName || '—')}</td>
+                                        <td>${getQualityBadge(item.Quality)}</td>
+                                        <td class="td-price">${formatMoney(item.Price)} ₽</td>
+                                        <td class="text-sec">${escapeHtml(item.SellerName)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+        } catch(err) {
+            content.innerHTML = `<div class="loading" style="color:var(--accent3);">❌ Ошибка: ${err.message}</div>`;
+        }
+    }
+    
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.style.display = 'none';
+    }
+    
+    function formatMoney(n) {
+        if (n == null) return '0';
+        return Number(n).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    
+    function getQualityBadge(q) {
+        if (!q) return '<span class="quality-badge">—</span>';
+        const short = {
+            'Factory New': 'FN', 'Minimal Wear': 'MW', 'Field-Tested': 'FT',
+            'Well-Worn': 'WW', 'Battle-Scarred': 'BS'
+        }[q] || q.substring(0, 2).toUpperCase();
+        return `<span class="quality-badge quality-${short.toLowerCase()}" title="${escapeHtml(q)}">${short}</span>`;
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        loadUserBalance();
+    });
+    
+    window.onclick = function(event) {
+        if (event.target.classList && event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    };
+</script>

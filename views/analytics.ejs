@@ -1,0 +1,203 @@
+<%- include('partials/header') %>
+
+<div class="container">
+    <div class="hero" style="padding: 2.5rem 0 1.5rem; text-align:left;">
+        <h1 class="hero-title" style="font-size:2rem; margin-bottom:0.5rem;">📊 Аналитика</h1>
+        <p class="text-sec">Статистика торговой платформы pr_Maksimenkov_skins</p>
+    </div>
+
+    <!-- Динамика продаж -->
+    <div class="chart-container mb-3 animate-in">
+        <div class="section-header" style="border:none; margin-bottom:1rem;">
+            <div class="section-title">Динамика продаж за 14 дней</div>
+        </div>
+        <canvas id="salesChart" height="80"></canvas>
+        <div id="sales-empty" class="loading" style="display:none;">Данных за этот период нет</div>
+    </div>
+
+    <div class="grid-2 mb-3">
+        <!-- По категориям -->
+        <div class="card animate-in stagger-1">
+            <div class="card-title">Продажи по категориям</div>
+            <canvas id="catChart" height="200"></canvas>
+        </div>
+
+        <!-- По качеству -->
+        <div class="card animate-in stagger-2">
+            <div class="card-title">Средняя цена по качеству</div>
+            <div id="quality-bars" class="bar-chart">
+                <div class="loading"><div class="spinner"></div>Загрузка...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Детальная таблица категорий -->
+    <div class="card animate-in mb-3">
+        <div class="card-title">Выручка по категориям</div>
+        <div id="cat-table-wrap" class="table-wrap">
+            <div class="loading"><div class="spinner"></div>Загрузка...</div>
+        </div>
+    </div>
+
+    <!-- Пользователи выше среднего -->
+    <div class="card animate-in mb-3">
+        <div class="card-title">Пользователи с балансом выше среднего</div>
+        <div id="rich-users-wrap" class="table-wrap">
+            <div class="loading"><div class="spinner"></div>Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Chart.js global config ───────────────────────────────────
+Chart.defaults.color = '#7a8aa8';
+Chart.defaults.borderColor = '#1e2d45';
+Chart.defaults.font.family = "'Inter', sans-serif";
+
+async function loadAnalytics() {
+    // ── 1. Динамика продаж ───────────────────────────────────
+    try {
+        const dynamics = await apiFetch('/api/sales-dynamics');
+        const canvas = document.getElementById('salesChart');
+        if (!dynamics.length) {
+            canvas.style.display = 'none';
+            document.getElementById('sales-empty').style.display = 'flex';
+        } else {
+            new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: dynamics.map(d => d.TradeDay),
+                    datasets: [
+                        {
+                            label: 'Сделок',
+                            data: dynamics.map(d => d.SalesCount),
+                            borderColor: '#4a9fe8',
+                            backgroundColor: 'rgba(74,159,232,0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'Выручка (₽)',
+                            data: dynamics.map(d => d.DailyRevenue),
+                            borderColor: '#e8a04a',
+                            backgroundColor: 'rgba(232,160,74,0.08)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y1',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { grid: { color: '#1e2d45' } },
+                        y: {
+                            grid: { color: '#1e2d45' },
+                            title: { display: true, text: 'Сделок' },
+                            position: 'left',
+                        },
+                        y1: {
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Выручка (₽)' },
+                            position: 'right',
+                        }
+                    },
+                    plugins: { legend: { labels: { usePointStyle: true } } }
+                }
+            });
+        }
+    } catch(e) { console.error(e); }
+
+    // ── 2. По категориям ─────────────────────────────────────
+    try {
+        const cats = await apiFetch('/api/categories');
+        const colors = ['#e8a04a','#4a9fe8','#4ae89a','#e84a6a','#9b4ae8','#e8e84a','#4ae8e8'];
+
+        // Пончик-чарт
+        new Chart(document.getElementById('catChart'), {
+            type: 'doughnut',
+            data: {
+                labels: cats.map(c => c.CategoryName),
+                datasets: [{
+                    data: cats.map(c => c.TotalRevenue),
+                    backgroundColor: colors.map(c => c + '99'),
+                    borderColor: colors,
+                    borderWidth: 1,
+                    hoverOffset: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 12, padding: 14 } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${ctx.label}: ${fmtMoney(ctx.raw)} ₽`
+                        }
+                    }
+                }
+            }
+        });
+
+        // Таблица категорий
+        document.getElementById('cat-table-wrap').innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>Категория</th><th>Сделок</th><th>Выручка</th><th>Ср. цена</th>
+                </tr></thead>
+                <tbody>${cats.map(c => `
+                    <tr>
+                        <td class="fw-600">${esc(c.CategoryName)}</td>
+                        <td class="text-accent">${fmt(c.SalesCount)}</td>
+                        <td class="td-price">${fmtMoney(c.TotalRevenue)} ₽</td>
+                        <td class="text-sec">${fmtMoney(c.AvgPrice)} ₽</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+    } catch(e) { console.error(e); }
+
+    // ── 3. По качеству ───────────────────────────────────────
+    try {
+        const qs = await apiFetch('/api/quality-stats');
+        const max = Math.max(...qs.map(q => q.AvgSalePrice || 0)) || 1;
+        const qColors = {
+            'Factory New': 'var(--fn)', 'Minimal Wear': 'var(--mw)',
+            'Field-Tested': 'var(--ft)', 'Well-Worn': 'var(--ww)',
+            'Battle-Scarred': 'var(--bs)'
+        };
+        document.getElementById('quality-bars').innerHTML = qs.map(q => `
+            <div class="bar-row">
+                <div class="bar-label" style="color:${qColors[q.Quality]||'var(--text-sec)'}">${esc(q.Quality)}</div>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width:${max>0 ? (q.AvgSalePrice/max*100).toFixed(1) : 0}%; background:${qColors[q.Quality]||'var(--accent2)'}"></div>
+                </div>
+                <div class="bar-value">${fmtMoney(q.AvgSalePrice)} ₽</div>
+            </div>`).join('');
+    } catch(e) { console.error(e); }
+
+    // ── 4. Богатые пользователи ──────────────────────────────
+    try {
+        const rich = await apiFetch('/api/rich-users');
+        document.getElementById('rich-users-wrap').innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>Пользователь</th><th>Баланс</th><th>Сделок</th><th>Разница от среднего</th>
+                </tr></thead>
+                <tbody>${rich.map(u => `
+                    <tr>
+                        <td class="fw-600">${esc(u.Username)}</td>
+                        <td class="td-price">${fmtMoney(u.Balance)} ₽</td>
+                        <td class="text-sec">${fmt(u.TotalTrades)}</td>
+                        <td class="text-green fw-600">+${fmtMoney(u.DifferenceFromAvg)} ₽</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+    } catch(e) { document.getElementById('rich-users-wrap').innerHTML = errHtml(e); }
+}
+
+loadAnalytics();
+</script>
+
+<%- include('partials/footer') %>
