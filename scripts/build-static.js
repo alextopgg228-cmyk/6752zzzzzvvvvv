@@ -9,6 +9,7 @@ const assetVersion = Date.now().toString();
 const pages = [
     { view: 'index', output: 'index.html', pageId: 'home', assetBase: '.' },
     { view: 'market', output: 'market/index.html', pageId: 'market', assetBase: '..' },
+    { view: 'sales', output: 'sales/index.html', pageId: 'sales', assetBase: '..' },
     { view: 'analytics', output: 'analytics/index.html', pageId: 'analytics', assetBase: '..' },
     { view: 'users', output: 'users/index.html', pageId: 'users', assetBase: '..' },
     { view: 'admin', output: 'admin/index.html', pageId: 'admin', assetBase: '..' },
@@ -18,6 +19,7 @@ function paths(assetBase) {
     return {
         homePath: `${assetBase}/`,
         marketPath: `${assetBase}/market/`,
+        salesPath: `${assetBase}/sales/`,
         analyticsPath: `${assetBase}/analytics/`,
         usersPath: `${assetBase}/users/`,
         adminPath: `${assetBase}/admin/`,

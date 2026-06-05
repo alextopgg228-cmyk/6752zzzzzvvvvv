@@ -15,6 +15,62 @@ async function tquery(name, q, params = {}) {
         throw e;
     }
 }
+
+const DEMO_AUTH_USERS = {
+    buyer: {
+        login: 'buyer',
+        password: 'buyer123',
+        role: 'buyer',
+        title: 'Покупатель',
+        username: 'SkinMaster',
+        userId: 1,
+        balance: 500000,
+        permissions: ['browse', 'buy', 'history']
+    },
+    seller: {
+        login: 'seller',
+        password: 'seller123',
+        role: 'seller',
+        title: 'Продавец',
+        username: 'PixelBroker',
+        userId: 4,
+        balance: 132900,
+        permissions: ['browse', 'sell', 'history', 'analytics']
+    },
+    moderator: {
+        login: 'moderator',
+        password: 'moderator123',
+        role: 'moderator',
+        title: 'Модератор',
+        username: 'TradeModerator',
+        userId: 6,
+        balance: 92000,
+        permissions: ['browse', 'analytics', 'moderate', 'audit']
+    },
+    admin: {
+        login: 'admin',
+        password: 'admin123',
+        role: 'admin',
+        title: 'Администратор',
+        username: 'MarketAdmin',
+        userId: 2,
+        balance: 318250,
+        permissions: ['browse', 'buy', 'sell', 'history', 'analytics', 'moderate', 'manageUsers', 'audit']
+    }
+};
+
+router.post('/auth/login', (req, res) => {
+    const login = String(req.body.login || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    const account = Object.values(DEMO_AUTH_USERS).find(user => user.login === login && user.password === password);
+
+    if (!account) {
+        return res.status(401).json({ success: false, error: 'Неверный логин или пароль' });
+    }
+
+    const { password: _password, ...user } = account;
+    res.json({ success: true, user });
+});
  
 router.get('/stats', async (req, res) => {
     try {
@@ -273,6 +329,131 @@ router.get('/user/:userId/purchase-history', async (req, res) => {
     } catch (err) {
         console.error('❌ Ошибка истории покупок:', err.message);
         res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/seller/:sellerId/listings', async (req, res) => {
+    const { sellerId } = req.params;
+
+    try {
+        const result = await query(`
+            SELECT L.ListingID, S.SkinID, S.SkinName, S.WeaponName, S.Quality, S.FloatValue,
+                   S.ImageURL,
+                   CASE
+                       WHEN S.FloatValue < 0.07 THEN 'Excellent'
+                       WHEN S.FloatValue < 0.15 THEN 'Good'
+                       WHEN S.FloatValue < 0.38 THEN 'Average'
+                       ELSE 'Poor'
+                   END AS WearRating,
+                   L.Price,
+                   U.Username AS SellerName,
+                   CASE
+                       WHEN L.Price <= S.MarketPrice * 0.9 THEN 'Below Market'
+                       WHEN L.Price >= S.MarketPrice * 1.1 THEN 'Above Market'
+                       ELSE 'Market Price'
+                   END AS PriceRating,
+                   S.MarketPrice,
+                   L.ListedDate,
+                   L.Status
+            FROM Listings L
+            JOIN Skins S ON L.SkinID = S.SkinID
+            JOIN Users U ON L.SellerID = U.UserID
+            WHERE L.SellerID = @sellerId AND L.Status = 'Active'
+            ORDER BY L.ListedDate DESC
+        `, {
+            sellerId: { type: sql.Int, value: parseInt(sellerId) }
+        });
+
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Ошибка загрузки объявлений продавца:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/seller/:sellerId/inventory', async (req, res) => {
+    const { sellerId } = req.params;
+
+    try {
+        const result = await query(`
+            SELECT UI.InventoryID, S.SkinID, S.SkinName, S.WeaponName, S.Quality, S.FloatValue,
+                   S.ImageURL, S.MarketPrice,
+                   CASE
+                       WHEN S.FloatValue < 0.07 THEN 'Excellent'
+                       WHEN S.FloatValue < 0.15 THEN 'Good'
+                       WHEN S.FloatValue < 0.38 THEN 'Average'
+                       ELSE 'Poor'
+                   END AS WearRating
+            FROM UserInventory UI
+            JOIN Skins S ON UI.SkinID = S.SkinID
+            WHERE UI.UserID = @sellerId AND ISNULL(UI.IsListed, 0) = 0
+            ORDER BY S.MarketPrice DESC
+        `, {
+            sellerId: { type: sql.Int, value: parseInt(sellerId) }
+        });
+
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Ошибка загрузки инвентаря продавца:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/seller/listings', async (req, res) => {
+    const sellerId = parseInt(req.body.sellerId);
+    const inventoryId = parseInt(req.body.inventoryId);
+    const price = Number(req.body.price);
+
+    if (!sellerId || !inventoryId || !Number.isFinite(price) || price <= 0) {
+        return res.status(400).json({ success: false, error: 'Укажите продавца, скин и корректную цену' });
+    }
+
+    try {
+        const result = await query(`
+            DECLARE @SkinID INT;
+            SELECT @SkinID = SkinID
+            FROM UserInventory
+            WHERE InventoryID = @inventoryId
+              AND UserID = @sellerId
+              AND ISNULL(IsListed, 0) = 0;
+
+            IF @SkinID IS NULL
+            BEGIN
+                THROW 51000, 'Скин уже выставлен или не найден в инвентаре', 1;
+            END
+
+            INSERT INTO Listings (SkinID, SellerID, Price, ListedDate, Status, IsFloatVisible)
+            VALUES (@SkinID, @sellerId, @price, GETDATE(), 'Active', 1);
+
+            UPDATE UserInventory
+            SET IsListed = 1
+            WHERE InventoryID = @inventoryId;
+
+            SELECT TOP 1 L.ListingID, S.SkinID, S.SkinName, S.WeaponName, S.Quality, S.FloatValue,
+                   S.ImageURL, L.Price, U.Username AS SellerName, S.MarketPrice,
+                   CASE
+                       WHEN L.Price <= S.MarketPrice * 0.9 THEN 'Below Market'
+                       WHEN L.Price >= S.MarketPrice * 1.1 THEN 'Above Market'
+                       ELSE 'Market Price'
+                   END AS PriceRating
+            FROM Listings L
+            JOIN Skins S ON L.SkinID = S.SkinID
+            JOIN Users U ON L.SellerID = U.UserID
+            WHERE L.ListingID = SCOPE_IDENTITY()
+        `, {
+            sellerId: { type: sql.Int, value: sellerId },
+            inventoryId: { type: sql.Int, value: inventoryId },
+            price: { type: sql.Decimal(12, 2), value: price }
+        });
+
+        res.json({
+            success: true,
+            message: 'Объявление создано',
+            listing: result.recordset[0]
+        });
+    } catch (err) {
+        console.error('Ошибка создания объявления продавца:', err.message);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

@@ -112,6 +112,7 @@
     <ul class="nav-links">
         <li><a href="<%= typeof homePath !== 'undefined' ? homePath : '/' %>" id="nav-home">Главная</a></li>
         <li><a href="<%= typeof marketPath !== 'undefined' ? marketPath : '/market' %>" id="nav-market">Маркет <span class="nav-badge">LIVE</span></a></li>
+        <li><a href="<%= typeof salesPath !== 'undefined' ? salesPath : '/sales' %>" id="nav-sales" data-role-nav="sales">Продажи</a></li>
         <li><a href="<%= typeof analyticsPath !== 'undefined' ? analyticsPath : '/analytics' %>" id="nav-analytics">Аналитика</a></li>
         <li><a href="<%= typeof usersPath !== 'undefined' ? usersPath : '/users' %>" id="nav-users">Пользователи</a></li>
         <li><a href="<%= typeof adminPath !== 'undefined' ? adminPath : '/admin' %>" id="nav-admin" data-role-nav="admin">Панель</a></li>
@@ -123,8 +124,9 @@
     <span class="role-badge" id="user-role-badge">Гость</span>
     <span id="balance-line">Баланс: <span id="user-balance" class="user-balance">0 ₽</span></span>
     <button class="history-btn" id="history-button" onclick="showPurchaseHistory()">История</button>
+    <a class="history-btn" id="sales-shortcut" href="<%= typeof salesPath !== 'undefined' ? salesPath : '/sales' %>">Продажи</a>
     <a class="history-btn" id="admin-shortcut" href="<%= typeof adminPath !== 'undefined' ? adminPath : '/admin' %>">Панель</a>
-    <button class="history-btn" onclick="openLoginModal()">Вход</button>
+    <button class="history-btn" id="login-button" onclick="openLoginModal()">Вход</button>
     <button class="history-btn" id="logout-button" onclick="logoutRole()">Выход</button>
 </div>
 
@@ -143,16 +145,16 @@
 <div id="login-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Вход по роли</h3>
+            <h3>Авторизация</h3>
             <button class="modal-close" onclick="closeModal('login-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <div class="role-login-head">
                 <div>
-                    <div class="section-title">Выберите профиль</div>
-                    <p class="text-sec">Это demo-вход для GitHub Pages. Роль сохраняется в браузере и показывает разные разделы интерфейса.</p>
+                    <div class="section-title">Вход по логину и паролю</div>
+                    <p class="text-sec">Доступны 4 зарегистрированных demo-пользователя: покупатель, продавец, модератор и администратор.</p>
                 </div>
-                <span class="role-chip">Demo RBAC</span>
+                <span class="role-chip">Login</span>
             </div>
             <div class="role-grid" id="role-options"></div>
         </div>

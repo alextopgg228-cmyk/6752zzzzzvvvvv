@@ -83,6 +83,9 @@ function cs2StateDefaults() {
         purchasedListingIds: [],
         balances: {},
         purchaseHistory: {},
+        sellerListings: [],
+        listedInventoryIds: [],
+        listingSeed: 5000,
         tradeSeed: 2000
     };
 }
@@ -106,9 +109,125 @@ function cs2UsersWithState(data, state = cs2GetMarketState()) {
     }));
 }
 
+function cs2SellerNameForUser(data, userId) {
+    const user = data.usersDetail.find(item => String(item.UserID) === String(userId));
+    return user ? user.Username : '';
+}
+
+function cs2AllListings(data, state = cs2GetMarketState()) {
+    return data.listings.concat(state.sellerListings || []);
+}
+
 function cs2ActiveListings(data, state = cs2GetMarketState()) {
     const purchased = new Set((state.purchasedListingIds || []).map(String));
-    return data.listings.filter(item => !purchased.has(String(item.ListingID)));
+    return cs2AllListings(data, state).filter(item => !purchased.has(String(item.ListingID)) && item.Status !== 'Sold');
+}
+
+function cs2SellerListings(data, userId, state = cs2GetMarketState()) {
+    const sellerName = cs2SellerNameForUser(data, userId);
+    return cs2ActiveListings(data, state)
+        .filter(item => item.SellerName === sellerName)
+        .sort((a, b) => {
+            const bDate = new Date(b.ListedDate || 0).getTime();
+            const aDate = new Date(a.ListedDate || 0).getTime();
+            return (bDate - aDate) || (Number(b.ListingID || 0) - Number(a.ListingID || 0));
+        });
+}
+
+function cs2WearRating(floatValue) {
+    const value = Number(floatValue || 0.5);
+    if (value < 0.07) return 'Excellent';
+    if (value < 0.15) return 'Good';
+    if (value < 0.38) return 'Average';
+    return 'Poor';
+}
+
+function cs2PriceRating(price, marketPrice) {
+    const currentPrice = Number(price || 0);
+    const currentMarket = Number(marketPrice || currentPrice || 1);
+    if (currentPrice <= currentMarket * 0.9) return 'Below Market';
+    if (currentPrice >= currentMarket * 1.1) return 'Above Market';
+    return 'Market Price';
+}
+
+function cs2SellerInventory(data, userId, state = cs2GetMarketState()) {
+    const listed = new Set((state.listedInventoryIds || []).map(String));
+    const sellerName = cs2SellerNameForUser(data, userId);
+    const templates = data.listings
+        .filter(item => item.SellerName !== sellerName)
+        .slice(0, 6)
+        .map((item, index) => ({
+            InventoryID: `${userId}-${item.ListingID}`,
+            SkinID: item.SkinID || item.ListingID,
+            SkinName: item.SkinName,
+            WeaponName: item.WeaponName,
+            Quality: item.Quality,
+            FloatValue: item.FloatValue,
+            ImageURL: item.ImageURL,
+            MarketPrice: item.MarketPrice || item.Price,
+            WearRating: item.WearRating || cs2WearRating(item.FloatValue)
+        }));
+    return templates.filter(item => !listed.has(String(item.InventoryID)));
+}
+
+function cs2CreateSellerListing(data, init) {
+    let body = {};
+    try {
+        body = init && init.body ? JSON.parse(init.body) : {};
+    } catch (error) {
+        body = {};
+    }
+
+    const state = cs2GetMarketState();
+    const sellerId = Number(body.sellerId || 0);
+    const inventoryId = String(body.inventoryId || '');
+    const price = Number(body.price || 0);
+    const sellerName = cs2SellerNameForUser(data, sellerId);
+    const inventoryItem = cs2SellerInventory(data, sellerId, state)
+        .find(item => String(item.InventoryID) === inventoryId);
+
+    if (!sellerName) {
+        return { status: 400, payload: { success: false, error: 'Продавец не найден' } };
+    }
+    if (!inventoryItem) {
+        return { status: 400, payload: { success: false, error: 'Скин уже выставлен или не найден в инвентаре' } };
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+        return { status: 400, payload: { success: false, error: 'Укажите корректную цену' } };
+    }
+
+    state.listingSeed = Number(state.listingSeed || 5000) + 1;
+    state.listedInventoryIds = state.listedInventoryIds || [];
+    state.sellerListings = state.sellerListings || [];
+    const listing = {
+        ListingID: state.listingSeed,
+        SkinID: inventoryItem.SkinID,
+        SkinName: inventoryItem.SkinName,
+        WeaponName: inventoryItem.WeaponName,
+        Quality: inventoryItem.Quality,
+        FloatValue: inventoryItem.FloatValue,
+        ImageURL: inventoryItem.ImageURL,
+        WearRating: inventoryItem.WearRating || cs2WearRating(inventoryItem.FloatValue),
+        Price: price,
+        SellerName: sellerName,
+        PriceRating: cs2PriceRating(price, inventoryItem.MarketPrice),
+        MarketPrice: inventoryItem.MarketPrice,
+        ListedDate: new Date().toISOString(),
+        Status: 'Active'
+    };
+
+    state.listedInventoryIds.push(inventoryId);
+    state.sellerListings.unshift(listing);
+    cs2WriteMarketState(state);
+
+    return {
+        status: 200,
+        payload: {
+            success: true,
+            message: `Объявление создано: ${listing.WeaponName} | ${listing.SkinName}`,
+            listing
+        }
+    };
 }
 
 function cs2TopListings(activeListings) {
@@ -129,7 +248,7 @@ function cs2HistoryForUser(data, userId, state = cs2GetMarketState()) {
 
 function cs2StatsWithState(data, state = cs2GetMarketState()) {
     const purchasedIds = new Set((state.purchasedListingIds || []).map(String));
-    const purchasedListings = data.listings.filter(item => purchasedIds.has(String(item.ListingID)));
+    const purchasedListings = cs2AllListings(data, state).filter(item => purchasedIds.has(String(item.ListingID)));
     const purchasedVolume = purchasedListings.reduce((sum, item) => sum + Number(item.Price || 0), 0);
     return {
         ...data.stats,
@@ -208,6 +327,15 @@ function cs2BuyListing(data, listingId, init) {
 function cs2StaticPayload(data, endpoint, searchParams, init) {
     const state = cs2GetMarketState();
     const activeListings = cs2ActiveListings(data, state);
+    if (endpoint === '/auth/login' && init && String(init.method || 'GET').toUpperCase() === 'POST') {
+        let body = {};
+        try {
+            body = init.body ? JSON.parse(init.body) : {};
+        } catch (error) {
+            body = {};
+        }
+        return cs2Authenticate(body.login, body.password);
+    }
     if (endpoint === '/stats') return cs2StatsWithState(data, state);
     if (endpoint === '/top-listings') return cs2TopListings(activeListings);
     if (endpoint === '/top-users') return data.topUsers;
@@ -218,6 +346,20 @@ function cs2StaticPayload(data, endpoint, searchParams, init) {
     if (endpoint === '/popular-skins') return data.popularSkins;
     if (endpoint === '/users-detail') return cs2UsersWithState(data, state);
     if (endpoint === '/listings') return cs2FilterListings(activeListings, searchParams);
+
+    const sellerListingsMatch = endpoint.match(/^\/seller\/(\d+)\/listings$/);
+    if (sellerListingsMatch) {
+        return cs2SellerListings(data, sellerListingsMatch[1], state);
+    }
+
+    const sellerInventoryMatch = endpoint.match(/^\/seller\/(\d+)\/inventory$/);
+    if (sellerInventoryMatch) {
+        return cs2SellerInventory(data, sellerInventoryMatch[1], state);
+    }
+
+    if (endpoint === '/seller/listings' && init && String(init.method || 'GET').toUpperCase() === 'POST') {
+        return cs2CreateSellerListing(data, init);
+    }
 
     const balanceMatch = endpoint.match(/^\/user\/(\d+)\/balance$/);
     if (balanceMatch) {
@@ -263,6 +405,29 @@ window.fetch = async function cs2Fetch(input, init) {
 };
 
 const CS2_ROLE_STORAGE_KEY = 'cs2-role-session';
+const CS2_AUTH_USERS = {
+    buyer: {
+        login: 'buyer',
+        password: 'buyer123',
+        role: 'buyer'
+    },
+    seller: {
+        login: 'seller',
+        password: 'seller123',
+        role: 'seller'
+    },
+    moderator: {
+        login: 'moderator',
+        password: 'moderator123',
+        role: 'moderator'
+    },
+    admin: {
+        login: 'admin',
+        password: 'admin123',
+        role: 'admin'
+    }
+};
+
 const CS2_ROLES = {
     guest: {
         title: 'Гость',
@@ -311,6 +476,32 @@ const CS2_ROLES = {
     }
 };
 
+function cs2Authenticate(login, password) {
+    const normalizedLogin = String(login || '').trim().toLowerCase();
+    const account = Object.values(CS2_AUTH_USERS).find(item =>
+        item.login === normalizedLogin && item.password === String(password || '')
+    );
+    if (!account) {
+        return { status: 401, payload: { success: false, error: 'Неверный логин или пароль' } };
+    }
+    const role = getRoleConfig(account.role);
+    return {
+        status: 200,
+        payload: {
+            success: true,
+            user: {
+                login: account.login,
+                role: account.role,
+                title: role.title,
+                username: role.username,
+                userId: role.userId,
+                balance: role.balance,
+                permissions: role.permissions
+            }
+        }
+    };
+}
+
 function getRoleConfig(roleId) {
     return CS2_ROLES[roleId] || CS2_ROLES.guest;
 }
@@ -319,7 +510,12 @@ function getCurrentRoleSession() {
     try {
         const stored = JSON.parse(localStorage.getItem(CS2_ROLE_STORAGE_KEY) || '{}');
         const roleId = stored.role && CS2_ROLES[stored.role] ? stored.role : 'guest';
-        return { role: roleId, ...getRoleConfig(roleId), signedInAt: stored.signedInAt || null };
+        return {
+            role: roleId,
+            ...getRoleConfig(roleId),
+            login: stored.login || null,
+            signedInAt: stored.signedInAt || null
+        };
     } catch (error) {
         return { role: 'guest', ...CS2_ROLES.guest };
     }
@@ -334,16 +530,65 @@ function roleCanOpenAdmin() {
     return roleCan('moderate') || roleCan('manageUsers');
 }
 
+function roleCanOpenSales() {
+    return roleCan('sell');
+}
+
 function loginAsRole(roleId) {
     if (!CS2_ROLES[roleId] || roleId === 'guest') return;
     localStorage.setItem(CS2_ROLE_STORAGE_KEY, JSON.stringify({
         role: roleId,
+        login: roleId,
         signedInAt: new Date().toISOString()
     }));
     closeModal('login-modal');
     applyRoleSession();
     window.dispatchEvent(new CustomEvent('cs2-role-changed', { detail: getCurrentRoleSession() }));
     showToast(`Вход выполнен: ${CS2_ROLES[roleId].title}`);
+}
+
+async function loginWithCredentials(event) {
+    if (event) event.preventDefault();
+    const loginInput = document.getElementById('login-username');
+    const passwordInput = document.getElementById('login-password');
+    const errorEl = document.getElementById('login-error');
+    const login = loginInput ? loginInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value : '';
+
+    if (errorEl) errorEl.textContent = '';
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ login, password })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Неверный логин или пароль');
+        }
+        localStorage.setItem(CS2_ROLE_STORAGE_KEY, JSON.stringify({
+            role: result.user.role,
+            login: result.user.login,
+            signedInAt: new Date().toISOString()
+        }));
+        closeModal('login-modal');
+        applyRoleSession();
+        if (typeof loadUserBalance === 'function') loadUserBalance();
+        window.dispatchEvent(new CustomEvent('cs2-role-changed', { detail: getCurrentRoleSession() }));
+        showToast(`Вход выполнен: ${result.user.title}`);
+    } catch (error) {
+        if (errorEl) errorEl.textContent = error.message;
+        showToast(error.message, true);
+    }
+}
+
+function fillDemoLogin(login) {
+    const account = CS2_AUTH_USERS[login];
+    if (!account) return;
+    const loginInput = document.getElementById('login-username');
+    const passwordInput = document.getElementById('login-password');
+    if (loginInput) loginInput.value = account.login;
+    if (passwordInput) passwordInput.value = account.password;
 }
 
 function logoutRole() {
@@ -362,19 +607,34 @@ function openLoginModal() {
 function renderRoleOptions() {
     const wrap = document.getElementById('role-options');
     if (!wrap) return;
-    const current = getCurrentRoleSession().role;
-    wrap.innerHTML = Object.entries(CS2_ROLES)
-        .filter(([roleId]) => roleId !== 'guest')
-        .map(([roleId, role]) => `
-            <button class="role-card ${current === roleId ? 'active' : ''}" onclick="loginAsRole('${roleId}')">
-                <span class="role-card-top">
-                    <strong>${esc(role.title)}</strong>
-                    <span class="role-chip">${esc(role.badge)}</span>
-                </span>
-                <span class="role-card-desc">${esc(role.description)}</span>
-                <span class="role-card-perms">${role.permissions.map(permission => esc(permission)).join(' / ')}</span>
-            </button>
-        `).join('');
+    wrap.innerHTML = `
+        <form class="login-form" onsubmit="loginWithCredentials(event)">
+            <div class="form-group">
+                <label class="form-label" for="login-username">Логин</label>
+                <input class="form-control" id="login-username" autocomplete="username" placeholder="buyer">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="login-password">Пароль</label>
+                <input class="form-control" id="login-password" type="password" autocomplete="current-password" placeholder="buyer123">
+            </div>
+            <div class="login-error" id="login-error"></div>
+            <button class="btn btn-primary" type="submit">Войти</button>
+        </form>
+        <div class="demo-users">
+            ${Object.values(CS2_AUTH_USERS).map(account => {
+                const role = getRoleConfig(account.role);
+                return `
+                    <button class="demo-user" type="button" onclick="fillDemoLogin('${esc(account.login)}')">
+                        <span>
+                            <strong>${esc(role.title)}</strong>
+                            <small>${esc(account.login)} / ${esc(account.password)}</small>
+                        </span>
+                        <span class="role-chip">${esc(role.badge)}</span>
+                    </button>
+                `;
+            }).join('')}
+        </div>
+    `;
 }
 
 function applyRoleSession() {
@@ -385,8 +645,11 @@ function applyRoleSession() {
     const balanceEl = document.getElementById('user-balance');
     const historyButton = document.getElementById('history-button');
     const adminShortcut = document.getElementById('admin-shortcut');
+    const salesShortcut = document.getElementById('sales-shortcut');
     const logoutButton = document.getElementById('logout-button');
+    const loginButton = document.getElementById('login-button');
     const adminNav = document.getElementById('nav-admin');
+    const salesNav = document.getElementById('nav-sales');
 
     if (nameEl) nameEl.textContent = session.username;
     if (badgeEl) badgeEl.textContent = session.title;
@@ -394,11 +657,15 @@ function applyRoleSession() {
     if (balanceLine) balanceLine.style.display = session.userId ? 'inline' : 'none';
     if (historyButton) historyButton.style.display = roleCan('history') ? 'inline-flex' : 'none';
     if (adminShortcut) adminShortcut.style.display = roleCanOpenAdmin() ? 'inline-flex' : 'none';
+    if (salesShortcut) salesShortcut.style.display = roleCanOpenSales() ? 'inline-flex' : 'none';
     if (adminNav) adminNav.style.display = roleCanOpenAdmin() ? 'block' : 'none';
+    if (salesNav) salesNav.style.display = roleCanOpenSales() ? 'block' : 'none';
+    if (loginButton) loginButton.style.display = session.role === 'guest' ? 'inline-flex' : 'none';
     if (logoutButton) logoutButton.style.display = session.role === 'guest' ? 'none' : 'inline-flex';
 }
 
 window.CS2_ROLES = CS2_ROLES;
+window.CS2_AUTH_USERS = CS2_AUTH_USERS;
 
 // ─── API Helper ───────────────────────────────────────────────────────────────
 async function apiFetch(url) {
@@ -445,6 +712,12 @@ function qualityBadge(q) {
     const short = QUALITY_SHORT[q] || q.substring(0,2).toUpperCase();
     const cls = 'quality-' + short;
     return `<span class="quality-badge ${cls}" title="${esc(q)}">${short}</span>`;
+}
+
+function getPriceClass(p) {
+    if (p === 'Below Market') return 'price-below';
+    if (p === 'Above Market') return 'price-above';
+    return 'price-market';
 }
 
 function skinPreview(url, name) {

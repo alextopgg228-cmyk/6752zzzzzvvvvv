@@ -714,7 +714,8 @@ canvas { max-width: 100%; }
 .toast.error { border-left-color: var(--accent3); }
 
 /* ─── Role login / admin demo ─── */
-#nav-admin { display: none; }
+#nav-admin,
+#nav-sales { display: none; }
 
 .role-badge,
 .role-chip {
@@ -751,6 +752,64 @@ canvas { max-width: 100%; }
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     gap: 0.75rem;
+}
+
+.login-form {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+    gap: 0.8rem;
+    align-items: end;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card2);
+}
+
+.login-error {
+    grid-column: 1 / -1;
+    min-height: 18px;
+    color: var(--accent3);
+    font-size: 0.82rem;
+}
+
+.demo-users {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.demo-user {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 68px;
+    padding: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card2);
+    color: var(--text-prim);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.demo-user:hover {
+    border-color: var(--accent);
+    background: var(--bg-hover);
+}
+
+.demo-user strong,
+.demo-user small {
+    display: block;
+}
+
+.demo-user small {
+    margin-top: 4px;
+    color: var(--text-sec);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
 }
 
 .role-card {
@@ -839,6 +898,48 @@ canvas { max-width: 100%; }
     background: var(--bg-card2);
 }
 
+.sales-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.2fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.sales-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.seller-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.seller-metric {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card2);
+    padding: 0.85rem;
+}
+
+.seller-metric span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 0.35rem;
+}
+
+.seller-metric strong {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.35rem;
+    color: var(--text-prim);
+}
+
 .permission-item strong {
     color: var(--green);
     font-family: 'Rajdhani', sans-serif;
@@ -888,6 +989,11 @@ canvas { max-width: 100%; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .filter-bar { flex-direction: column; }
     .skins-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .login-form,
+    .sales-grid,
+    .seller-metrics {
+        grid-template-columns: 1fr;
+    }
     .role-login-head,
     .role-summary,
     .access-lock {
