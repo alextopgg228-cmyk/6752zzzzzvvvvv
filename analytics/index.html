@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 Skin Market — pr_Maksimenkov_skins</title>
+    <link rel="stylesheet" href="../css/style.css?v=1780675641326">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        window.CS2_STATIC_MODE = true;
+        window.CS2_ASSET_BASE = '..';
+    </script>
+    <script src="../js/app.js?v=1780675641326"></script>
+    <style>
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.8);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-content {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        max-width: 900px;
+        width: 90%;
+        max-height: 80vh;
+        overflow: auto;
+        animation: fadeInUp 0.3s ease;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 {
+        font-family: 'Rajdhani', sans-serif;
+        color: var(--accent);
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-sec);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .modal-close:hover {
+        color: var(--accent3);
+    }
+    .modal-body {
+        padding: 1.5rem;
+    }
+    .user-panel {
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 20px;
+        z-index: 999;
+        backdrop-filter: blur(8px);
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }
+    .user-balance {
+        color: var(--accent);
+        font-weight: 700;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    .history-btn {
+        background: var(--bg-card2);
+        border: 1px solid var(--border);
+        padding: 4px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.8rem;
+    }
+    .history-btn:hover {
+        border-color: var(--accent2);
+        color: var(--accent2);
+    }
+    @media (max-width: 768px) {
+        .user-panel {
+            top: auto;
+            bottom: 10px;
+            right: 10px;
+            left: 10px;
+            justify-content: center;
+        }
+    }
+    </style>
+</head>
+<body data-page="analytics">
+
+<nav class="navbar">
+    <a href="../" class="nav-logo">
+        <div class="logo-icon">⬡</div>
+        CS2 <span class="accent">MARKET</span>
+    </a>
+    <ul class="nav-links">
+        <li><a href="../" id="nav-home">Главная</a></li>
+        <li><a href="../market/" id="nav-market">Маркет <span class="nav-badge">LIVE</span></a></li>
+        <li><a href="../sales/" id="nav-sales" data-role-nav="sales">Продажи</a></li>
+        <li><a href="../analytics/" id="nav-analytics">Аналитика</a></li>
+        <li><a href="../users/" id="nav-users">Пользователи</a></li>
+        <li><a href="../admin/" id="nav-admin" data-role-nav="admin">Панель</a></li>
+    </ul>
+</nav>
+
+<div class="user-panel" id="session-panel">
+    <span>Профиль: <strong id="user-name">Гость</strong></span>
+    <span class="role-badge" id="user-role-badge">Гость</span>
+    <span id="balance-line">Баланс: <span id="user-balance" class="user-balance">0 ₽</span></span>
+    <button class="history-btn" id="history-button" onclick="showPurchaseHistory()">История</button>
+    <a class="history-btn" id="sales-shortcut" href="../sales/">Продажи</a>
+    <a class="history-btn" id="admin-shortcut" href="../admin/">Панель</a>
+    <button class="history-btn" id="login-button" onclick="openLoginModal()">Вход</button>
+    <button class="history-btn" id="logout-button" onclick="logoutRole()">Выход</button>
+</div>
+
+<div id="history-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📜 История покупок</h3>
+            <button class="modal-close" onclick="closeModal('history-modal')">&times;</button>
+        </div>
+        <div class="modal-body" id="history-content">
+            <div class="loading"><div class="spinner"></div>Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<div id="login-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Авторизация</h3>
+            <button class="modal-close" onclick="closeModal('login-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="role-login-head">
+                <div>
+                    <div class="section-title">Вход по логину и паролю</div>
+                    <p class="text-sec">Доступны 4 зарегистрированных demo-пользователя: покупатель, продавец, модератор и администратор.</p>
+                </div>
+                <span class="role-chip">Login</span>
+            </div>
+            <div class="role-grid" id="role-options"></div>
+        </div>
+    </div>
+</div>
+
+<div class="page-wrapper">
+
+<script>
+    async function loadUserBalance() {
+        const session = getCurrentRoleSession();
+        if (!session.userId) {
+            applyRoleSession();
+            return;
+        }
+        try {
+            const response = await fetch(`/api/user/${session.userId}/balance`);
+            const data = await response.json();
+            const balanceEl = document.getElementById('user-balance');
+            if (balanceEl && data.Balance !== undefined) {
+                balanceEl.textContent = Number(data.Balance).toLocaleString('ru-RU') + ' ₽';
+            }
+        } catch(e) {
+            console.error('Ошибка загрузки баланса:', e);
+            const balanceEl = document.getElementById('user-balance');
+            if (balanceEl) balanceEl.textContent = fmtMoney(session.balance || 0) + ' ₽';
+        }
+    }
+    
+    async function showPurchaseHistory(userId) {
+        const session = getCurrentRoleSession();
+        const targetUserId = userId || session.userId;
+        if (!targetUserId || !roleCan('history')) {
+            openLoginModal();
+            showToast('Для истории покупок войдите как покупатель или администратор', true);
+            return;
+        }
+        const modal = document.getElementById('history-modal');
+        const content = document.getElementById('history-content');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        content.innerHTML = '<div class="loading"><div class="spinner"></div>Загрузка истории...</div>';
+        try {
+            const response = await fetch(`/api/user/${targetUserId}/purchase-history`);
+            const history = await response.json();
+            if (!history.length) {
+                content.innerHTML = '<div class="loading">📭 История покупок пуста</div>';
+            } else {
+                content.innerHTML = `
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Скин</th>
+                                    <th>Оружие</th>
+                                    <th>Качество</th>
+                                    <th>Цена</th>
+                                    <th>Продавец</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${history.map(item => `
+                                    <tr>
+                                        <td class="text-sm">${new Date(item.TradeDate).toLocaleDateString('ru-RU')}</td>
+                                        <td class="fw-600">${escapeHtml(item.SkinName)}</td>
+                                        <td class="text-sec">${escapeHtml(item.WeaponName || '—')}</td>
+                                        <td>${getQualityBadge(item.Quality)}</td>
+                                        <td class="td-price">${formatMoney(item.Price)} ₽</td>
+                                        <td class="text-sec">${escapeHtml(item.SellerName)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+        } catch(err) {
+            content.innerHTML = `<div class="loading" style="color:var(--accent3);">❌ Ошибка: ${err.message}</div>`;
+        }
+    }
+    
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.style.display = 'none';
+    }
+    
+    function formatMoney(n) {
+        if (n == null) return '0';
+        return Number(n).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    
+    function getQualityBadge(q) {
+        if (!q) return '<span class="quality-badge">—</span>';
+        const short = {
+            'Factory New': 'FN', 'Minimal Wear': 'MW', 'Field-Tested': 'FT',
+            'Well-Worn': 'WW', 'Battle-Scarred': 'BS'
+        }[q] || q.substring(0, 2).toUpperCase();
+        return `<span class="quality-badge quality-${short.toLowerCase()}" title="${escapeHtml(q)}">${short}</span>`;
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        applyRoleSession();
+        loadUserBalance();
+    });
+    
+    document.addEventListener('click', function(event) {
+        if (event.target.classList && event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    });
+</script>
+
+
+<div class="container">
+    <div class="hero" style="padding: 2.5rem 0 1.5rem; text-align:left;">
+        <h1 class="hero-title" style="font-size:2rem; margin-bottom:0.5rem;">📊 Аналитика</h1>
+        <p class="text-sec">Статистика торговой платформы pr_Maksimenkov_skins</p>
+    </div>
+
+    <!-- Динамика продаж -->
+    <div class="chart-container mb-3 animate-in">
+        <div class="section-header" style="border:none; margin-bottom:1rem;">
+            <div class="section-title">Динамика продаж за 14 дней</div>
+        </div>
+        <canvas id="salesChart" height="80"></canvas>
+        <div id="sales-empty" class="loading" style="display:none;">Данных за этот период нет</div>
+    </div>
+
+    <div class="grid-2 mb-3">
+        <!-- По категориям -->
+        <div class="card animate-in stagger-1">
+            <div class="card-title">Продажи по категориям</div>
+            <canvas id="catChart" height="200"></canvas>
+        </div>
+
+        <!-- По качеству -->
+        <div class="card animate-in stagger-2">
+            <div class="card-title">Средняя цена по качеству</div>
+            <div id="quality-bars" class="bar-chart">
+                <div class="loading"><div class="spinner"></div>Загрузка...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Детальная таблица категорий -->
+    <div class="card animate-in mb-3">
+        <div class="card-title">Выручка по категориям</div>
+        <div id="cat-table-wrap" class="table-wrap">
+            <div class="loading"><div class="spinner"></div>Загрузка...</div>
+        </div>
+    </div>
+
+    <!-- Пользователи выше среднего -->
+    <div class="card animate-in mb-3">
+        <div class="card-title">Пользователи с балансом выше среднего</div>
+        <div id="rich-users-wrap" class="table-wrap">
+            <div class="loading"><div class="spinner"></div>Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Chart.js global config ───────────────────────────────────
+Chart.defaults.color = '#7a8aa8';
+Chart.defaults.borderColor = '#1e2d45';
+Chart.defaults.font.family = "'Inter', sans-serif";
+
+async function loadAnalytics() {
+    // ── 1. Динамика продаж ───────────────────────────────────
+    try {
+        const dynamics = await apiFetch('/api/sales-dynamics');
+        const canvas = document.getElementById('salesChart');
+        if (!dynamics.length) {
+            canvas.style.display = 'none';
+            document.getElementById('sales-empty').style.display = 'flex';
+        } else {
+            new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: dynamics.map(d => d.TradeDay),
+                    datasets: [
+                        {
+                            label: 'Сделок',
+                            data: dynamics.map(d => d.SalesCount),
+                            borderColor: '#4a9fe8',
+                            backgroundColor: 'rgba(74,159,232,0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'Выручка (₽)',
+                            data: dynamics.map(d => d.DailyRevenue),
+                            borderColor: '#e8a04a',
+                            backgroundColor: 'rgba(232,160,74,0.08)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y1',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { grid: { color: '#1e2d45' } },
+                        y: {
+                            grid: { color: '#1e2d45' },
+                            title: { display: true, text: 'Сделок' },
+                            position: 'left',
+                        },
+                        y1: {
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Выручка (₽)' },
+                            position: 'right',
+                        }
+                    },
+                    plugins: { legend: { labels: { usePointStyle: true } } }
+                }
+            });
+        }
+    } catch(e) { console.error(e); }
+
+    // ── 2. По категориям ─────────────────────────────────────
+    try {
+        const cats = await apiFetch('/api/categories');
+        const colors = ['#e8a04a','#4a9fe8','#4ae89a','#e84a6a','#9b4ae8','#e8e84a','#4ae8e8'];
+
+        // Пончик-чарт
+        new Chart(document.getElementById('catChart'), {
+            type: 'doughnut',
+            data: {
+                labels: cats.map(c => c.CategoryName),
+                datasets: [{
+                    data: cats.map(c => c.TotalRevenue),
+                    backgroundColor: colors.map(c => c + '99'),
+                    borderColor: colors,
+                    borderWidth: 1,
+                    hoverOffset: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 12, padding: 14 } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${ctx.label}: ${fmtMoney(ctx.raw)} ₽`
+                        }
+                    }
+                }
+            }
+        });
+
+        // Таблица категорий
+        document.getElementById('cat-table-wrap').innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>Категория</th><th>Сделок</th><th>Выручка</th><th>Ср. цена</th>
+                </tr></thead>
+                <tbody>${cats.map(c => `
+                    <tr>
+                        <td class="fw-600">${esc(c.CategoryName)}</td>
+                        <td class="text-accent">${fmt(c.SalesCount)}</td>
+                        <td class="td-price">${fmtMoney(c.TotalRevenue)} ₽</td>
+                        <td class="text-sec">${fmtMoney(c.AvgPrice)} ₽</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+    } catch(e) { console.error(e); }
+
+    // ── 3. По качеству ───────────────────────────────────────
+    try {
+        const qs = await apiFetch('/api/quality-stats');
+        const max = Math.max(...qs.map(q => q.AvgSalePrice || 0)) || 1;
+        const qColors = {
+            'Factory New': 'var(--fn)', 'Minimal Wear': 'var(--mw)',
+            'Field-Tested': 'var(--ft)', 'Well-Worn': 'var(--ww)',
+            'Battle-Scarred': 'var(--bs)'
+        };
+        document.getElementById('quality-bars').innerHTML = qs.map(q => `
+            <div class="bar-row">
+                <div class="bar-label" style="color:${qColors[q.Quality]||'var(--text-sec)'}">${esc(q.Quality)}</div>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width:${max>0 ? (q.AvgSalePrice/max*100).toFixed(1) : 0}%; background:${qColors[q.Quality]||'var(--accent2)'}"></div>
+                </div>
+                <div class="bar-value">${fmtMoney(q.AvgSalePrice)} ₽</div>
+            </div>`).join('');
+    } catch(e) { console.error(e); }
+
+    // ── 4. Богатые пользователи ──────────────────────────────
+    try {
+        const rich = await apiFetch('/api/rich-users');
+        document.getElementById('rich-users-wrap').innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>Пользователь</th><th>Баланс</th><th>Сделок</th><th>Разница от среднего</th>
+                </tr></thead>
+                <tbody>${rich.map(u => `
+                    <tr>
+                        <td class="fw-600">${esc(u.Username)}</td>
+                        <td class="td-price">${fmtMoney(u.Balance)} ₽</td>
+                        <td class="text-sec">${fmt(u.TotalTrades)}</td>
+                        <td class="text-green fw-600">+${fmtMoney(u.DifferenceFromAvg)} ₽</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+    } catch(e) { document.getElementById('rich-users-wrap').innerHTML = errHtml(e); }
+}
+
+loadAnalytics();
+</script>
+
+</div><!-- /page-wrapper -->
+
+<div id="toast" class="toast"></div>
+
+<script>
+    // Подсветка активной ссылки
+    const activePage = document.body.dataset.page;
+    if (activePage) {
+        const activeLink = document.getElementById(`nav-${activePage}`);
+        if (activeLink) activeLink.classList.add('active');
+    } else {
+        const path = window.location.pathname;
+        document.querySelectorAll('.nav-links a').forEach(a => {
+            if (a.getAttribute('href') === path) a.classList.add('active');
+        });
+    }
+</script>
+</body>
+</html>
+
